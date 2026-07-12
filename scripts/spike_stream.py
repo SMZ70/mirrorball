@@ -37,9 +37,8 @@ async def entertainment_area(host: str, app_key: str) -> tuple[str, list[Channel
     async with aiohttp.ClientSession(
         connector=aiohttp.TCPConnector(ssl=ctx),
         headers={"hue-application-key": app_key},
-    ) as session:
-        async with session.get(url) as resp:
-            areas = (await resp.json())["data"]
+    ) as session, session.get(url) as resp:
+        areas = (await resp.json())["data"]
 
     # Take the area with the most channels: the most lights to play with
     area = max(areas, key=lambda a: len(a["channels"]))
