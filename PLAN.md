@@ -109,3 +109,49 @@ proceeds — no design changes when the key arrives, just a different driver.
   the performance instrument; they can share the bridge and hand off cleanly.
 - An app store build. The PWA installs on a phone. Capacitor can wrap it later
   if there is ever a reason.
+
+## P6 — groups and links (ergonomics)
+
+Setting six lights one at a time is tedious, and the interesting ideas are all
+*relationships*: "these two together", "that one answers this one". Two additions
+cover it, and both stay pure functions of the beat.
+
+### A track drives a set of lights, with a spread
+
+`Track.targets` is a list, and `Track.spread` says how the pattern is dealt
+across them:
+
+- **spread 0** — every light in the track fires in unison. That is a **group**.
+- **spread 1** — the pattern is staggered evenly across the track's lights, so it
+  *travels* through them. That is a wave, inside one track.
+
+A single-light track is just the degenerate case, so nothing special-cases it.
+The per-light offset is `spread · i / n` added to the phase -- still a pure
+function, still no state.
+
+### A track can follow another
+
+`Track.link` = `{follow, rate_scale, hue_shift, invert}`. A follower inherits the
+leader's **pattern** (shape, curve, rate, duty, palette) and keeps its own
+**placement** (which lights, spread, level, brightness range, phase). Then:
+
+- `rate_scale` — 2 = half speed, 0.5 = double time
+- `hue_shift` — degrees around the wheel; 180 = the complementary colour
+- `invert` — bright when the leader is dark
+- `phase` — its own offset, so it can answer half a beat later
+
+This is what "define one relative to another" means in practice: an echo, a
+counterpoint, a shadow.
+
+**Linking is one level deep.** A follower follows its leader's *own* pattern,
+never the leader's leader. That is a real constraint, chosen because it makes a
+cycle impossible by construction rather than by a visited-set check that someone
+has to remember to keep correct.
+
+### Presets get a layout
+
+A preset says how its voices meet the room:
+
+- **each** — one track per light, voices cycled (the tour: `party`, `birthday`)
+- **all** — every light in ONE track (`rave` in unison, `wave` travelling)
+- **split** — lights dealt into one group per voice (call and answer)

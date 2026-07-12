@@ -28,15 +28,16 @@ export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // ── Fixtures ────────────────────────────────────────────────────────────────
 
 export const track = (i = 0, over = {}) => ({
-  id: `t${i}`, target: `l${i}`, name: `Light ${i}`, target_kind: "light",
+  id: `t${i}`, targets: [`l${i}`], name: `Light ${i}`, target_kind: "light",
   shape: "pulse", curve: "sine", rate: 1.0, phase: 0.1 * i, duty: 0.5,
   palette: { hue_from: 30, hue_to: 55, saturation: 1.0, mode: "cycle" },
-  bri_min: 8, bri_max: 100, level: 1.0, mute: false, solo: false, seed: i,
+  bri_min: 8, bri_max: 100, level: 1.0, spread: 0.0, link: null, invert: false,
+  mute: false, solo: false, seed: i,
   ...over,
 });
 
 export const show = (over = {}) => ({
-  version: 1, name: "party", bpm: 120, blackout: false,
+  version: 2, name: "party", bpm: 120, blackout: false,
   master: { brightness: 1.0, energy: 1.0 },
   tracks: [track(0), track(1)],
   ...over,

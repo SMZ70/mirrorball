@@ -27,11 +27,46 @@ icon.
 - **Presets** — tap one to load it (see below)
 - **My shows** — tap a saved show to load it; **Save** names the current one
 
+## Groups and links
+
+Setting six lights one at a time is tedious, and the interesting ideas are all
+*relationships*. Two things cover it.
+
+**A track drives a set of lights.** Tap lights in or out of a track — two or more
+is a **group**, and they share a pattern. A light belongs to exactly one track;
+adding it here takes it from wherever it was. (Two tracks driving one bulb would
+just fight, and whichever rendered last would win.)
+
+**`spread` decides what a group means.** At *unison* every light in the group
+does the same thing at the same instant — the group becomes one big lamp. Turn it
+up and each light sits a little further round the cycle, so the pattern
+**travels** through them. `rave` and `wave` are the same layout with one number
+different.
+
+**A track can follow another.** It inherits the leader's **pattern** — shape,
+curve, rate, duty, colour — and keeps its own **placement** — lights, spread,
+brightness, level, phase. Then it can differ:
+
+| | |
+|---|---|
+| **speed** | ×½ / ×2 — the echo at half or double time |
+| **invert** | bright exactly where the leader is dark |
+| **hue ±** | rotate its colour; 180° is the opposite side of the wheel |
+| **phase** | answer half a beat later |
+
+Change the leader and the follower changes with it. The `call` preset is the
+demo: the room splits in two and the halves argue.
+
+**Linking is one level deep** — a follower follows its leader's *own* pattern,
+never the leader's leader. That is a real constraint, chosen because it makes a
+cycle impossible *by construction* rather than by a visited-set check somebody
+has to remember to keep correct.
+
 ## Presets
 
-Eight ship with mmdj: `party` `bandari` `birthday` `chill` `rave` `wave` `fire`
-`sunset`. Tap one and it loads — including while a show is playing, which swaps
-the lights over without a gap.
+Nine ship with mmdj: `party` `bandari` `birthday` `chill` `rave` `wave` `fire`
+`sunset` `call`. Tap one and it loads — including while a show is playing, which
+swaps the lights over without a gap.
 
 A preset is **not** a saved show. A saved show names the lights it drives, and
 those ids belong to one house; a preset is a list of *voices* ("first light does
@@ -39,6 +74,10 @@ a hot chase, second answers with a strobe") that get dealt onto whatever lights
 the entertainment area actually has, cycling if there are more lights than
 voices. So presets work on any bridge, and nothing about this house is in the
 repo.
+
+A preset also says how its voices meet the room: **each** (one track per light),
+**all** (every light in one track — `rave` in unison, `wave` travelling), or
+**split** (one group per voice, which is how `call` gets two halves to argue).
 
 Add one by adding an entry to `PRESETS` in `mmdj/core/presets.py`. There is
 nothing else to touch, and a test builds every preset against 1, 6 and 12 lights

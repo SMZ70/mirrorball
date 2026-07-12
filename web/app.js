@@ -33,6 +33,23 @@ const BPM_MIN = 40, BPM_MAX = 220;      // the server rejects anything outside
 // hover, so there is nowhere to put a tooltip. Written to answer "why would I
 // touch this?", not to restate the label.
 const HELP = {
+  lights: "Which lights this track drives. Tap to add or remove — a light can "
+        + "only be in one track at a time, so adding it here takes it from "
+        + "wherever it was. <b>Two or more lights in one track is a group</b>: "
+        + "they share a pattern.",
+  spread: "How the pattern is dealt across the lights in this group. "
+        + "<b>unison</b> and they all do the same thing at the same moment — the "
+        + "group becomes one big lamp. Turn it up and each light sits a little "
+        + "further round the cycle, so the pattern <i>travels</i> through them.",
+  follows: "Make this track echo another one instead of having a pattern of its "
+        + "own. It copies that track's <b>shape, curve, rate, duty and colour</b>, "
+        + "and keeps its own lights, brightness and phase. Change the leader and "
+        + "this changes with it.",
+  relation: "How the echo differs from what it follows. <b>speed</b> runs it at "
+        + "half or double time · <b>invert</b> makes it bright exactly where the "
+        + "leader is dark · <b>hue ±</b> rotates its colour (<b>180°</b> is the "
+        + "opposite side of the wheel). Add <b>phase</b> below to answer a beat "
+        + "later.",
   shape: "What the light does each cycle. <b>pulse</b> swells and falls · "
        + "<b>strobe</b> snaps on and off · <b>chase</b> hits then decays · "
        + "<b>sparkle</b> fires at random moments · <b>breathe</b> drifts slowly · "
@@ -74,7 +91,19 @@ const FMT = {
   bri_min:  (v) => `${Math.round(v)}`,
   bri_max:  (v) => `${Math.round(v)}`,
   level:    (v) => `${Math.round(v * 100)}%`,
+  spread:   (v) => (v < 0.02 ? "unison" : v.toFixed(2)),
+  hue_shift: (v) => `${Math.round(v)}°`,
+  rate_scale: (v) => `×${v}`,
 };
+
+// What a follower can do to its leader's pattern.
+const SCALES = [
+  { label: "×¼", v: 0.25 },
+  { label: "×½", v: 0.5 },
+  { label: "×1", v: 1 },
+  { label: "×2", v: 2 },
+  { label: "×4", v: 4 },
+];
 
 let state = null;      // last state from the server
 let show = null;       // the Show we are editing -- ours, not the server's
@@ -254,6 +283,50 @@ function slide(el, id, field, palette) {
   push();
 }
 
+/** Same, for a link's own sliders. Same rule: no rebuild mid-drag. */
+function slideLink(el, id, field) {
+  const value = +el.value;
+  const t = track(id);
+  if (!t.link) return;
+  t.link[field] = value;
+
+  const label = el.nextElementSibling;
+  if (label) label.textContent = FMT[field](value);
+
+  push();
+}
+
+// ── Groups ────────────────────────────────────────────────────────────────
+
+/** Move a light in or out of a track. A light belongs to exactly one track --
+ *  two tracks driving the same bulb would just fight, and the last one rendered
+ *  would win, which is a coin toss dressed up as a feature. */
+function toggleLight(trackId, lightId) {
+  const t = track(trackId);
+  if (t.targets.includes(lightId)) {
+    t.targets = t.targets.filter((x) => x !== lightId);
+  } else {
+    for (const other of show.tracks) {
+      other.targets = other.targets.filter((x) => x !== lightId);
+    }
+    t.targets = [...t.targets, lightId];
+  }
+  push();
+  render();
+}
+
+// ── Links ─────────────────────────────────────────────────────────────────
+
+function setLink(id, patch) {
+  const t = track(id);
+  t.link = t.link
+    ? { ...t.link, ...patch }
+    : { follow: "", rate_scale: 1, hue_shift: 0, invert: false, ...patch };
+  if (!t.link.follow) t.link = null;          // "none" means none
+  push();
+  render();
+}
+
 function toggleOpen(id) {
   open = open === id ? null : id;
   render();
@@ -282,26 +355,81 @@ const slider = (t, field, attrs, palette) => {
     <span class="val">${FMT[field](value)}</span>`;
 };
 
+// The lights this track drives, by name -- that is what the user thinks of it as.
+function trackLabel(t) {
+  const named = t.targets
+    .map((id) => (state.lights.find((l) => l.id === id) || {}).name)
+    .filter(Boolean);
+  if (!named.length) return "no lights";
+  if (named.length <= 2) return named.join(" + ");
+  return `${named.length} lights`;
+}
+
 function trackHtml(t) {
   const p = t.palette;
   const isOpen = open === t.id;
   const swatch = `linear-gradient(135deg, ${hsl(p.hue_from)}, ${hsl(p.hue_to)})`;
+  const leader = t.link && show.tracks.find((x) => x.id === t.link.follow);
 
   const head = `
     <div class="thead" onclick="toggleOpen('${t.id}')">
       <span class="swatch" style="background:${swatch}"></span>
-      <span class="tname">${t.name || t.target.slice(0, 8)}</span>
-      <span class="tinfo">${t.shape} · ${rateLabel(t.rate)}</span>
+      <span class="tname">${trackLabel(t)}</span>
+      <span class="tinfo">${leader
+        ? `follows ${trackLabel(leader)}`
+        : `${t.shape} · ${rateLabel(t.rate)}`}</span>
+      ${t.targets.length > 1 ? `<span class="chip g">${t.targets.length}</span>` : ""}
+      ${leader ? '<span class="chip l">↳</span>' : ""}
       ${t.solo ? '<span class="chip s">S</span>' : ""}
       ${t.mute ? '<span class="chip m">M</span>' : ""}
     </div>`;
 
   if (!isOpen) return `<div class="track ${t.mute ? "muted" : ""}">${head}</div>`;
 
+  const others = show.tracks.filter((x) => x.id !== t.id);
+
   return `
   <div class="track ${t.mute ? "muted" : ""} open">
     ${head}
     <div class="body">
+
+      <div class="row"><label>lights</label><div class="segs">
+        ${(state.lights || []).map((l) => `<div
+           class="seg ${t.targets.includes(l.id) ? "sel" : ""}"
+           onclick="toggleLight('${t.id}','${l.id}')">${l.name}</div>`).join("")}
+      </div></div>
+      ${help("lights")}
+
+      ${t.targets.length > 1 ? `
+      <div class="row"><label>spread</label>
+        ${slider(t, "spread", 'min="0" max="1" step="0.05"')}
+      </div>
+      ${help("spread")}` : ""}
+
+      <div class="row"><label>follows</label><div class="segs">
+        <div class="seg ${!t.link ? "sel" : ""}"
+             onclick="setLink('${t.id}',{follow:''})">nothing</div>
+        ${others.map((o) => `<div class="seg ${t.link?.follow === o.id ? "sel" : ""}"
+           onclick="setLink('${t.id}',{follow:'${o.id}'})">${trackLabel(o)}</div>`).join("")}
+      </div></div>
+      ${help("follows")}
+
+      ${t.link ? `
+      <div class="row"><label>speed</label><div class="segs">
+        ${SCALES.map((s) => `<div class="seg ${t.link.rate_scale === s.v ? "sel" : ""}"
+           onclick="setLink('${t.id}',{rate_scale:${s.v}})">${s.label}</div>`).join("")}
+        <div class="seg ${t.link.invert ? "sel" : ""}"
+             onclick="setLink('${t.id}',{invert:${!t.link.invert}})">invert</div>
+      </div></div>
+      <div class="row"><label>hue ±</label>
+        <input type="range" min="-180" max="180" step="5" value="${t.link.hue_shift}"
+               oninput="slideLink(this,'${t.id}','hue_shift')">
+        <span class="val">${FMT.hue_shift(t.link.hue_shift)}</span>
+      </div>
+      ${help("relation")}
+      <div class="note">Pattern comes from <b>${trackLabel(leader || t)}</b>. Shape,
+        curve, rate, duty and colour are its own — change them there.</div>
+      ` : `
       <div class="row"><label>shape</label><div class="segs">
         ${SHAPES.map((s) => `<div class="seg ${t.shape === s ? "sel" : ""}"
            onclick="setTrack('${t.id}',{shape:'${s}'})">${s}</div>`).join("")}
@@ -333,6 +461,7 @@ function trackHtml(t) {
         ${slider(t, "hue_to", 'class="hue" min="0" max="360"', true)}
       </div>
       ${help("hue")}
+      `}
 
       <div class="row"><label>phase</label>
         ${slider(t, "phase", 'min="0" max="0.99" step="0.01"')}

@@ -136,15 +136,29 @@ RENDERERS: dict[Shape, Renderer] = {
 # The one entry point
 # ---------------------------------------------------------------------------
 
-def render(track: Track, beat: float, energy: float = 1.0) -> Frame:
-    """What this track's light should be, at this beat."""
+def render(track: Track, beat: float, energy: float = 1.0,
+           index: int = 0, count: int = 1) -> Frame:
+    """What this track's light number `index` should be, at this beat.
+
+    A track can drive several lights. `spread` says how its pattern is dealt
+    across them: 0 and they all do the same thing at the same moment (a group);
+    1 and each light sits a little further round the cycle, so the pattern
+    travels through the group. It is one number, and it is still a pure offset --
+    nothing is remembered between frames.
+    """
+    offset = track.spread * (index / count) if count > 1 else 0.0
+
     # Where we are inside this track's own cycle. `rate` is in beats, so this
     # stays locked to the show when the tempo changes.
-    pos = beat / track.rate + track.phase
+    pos = beat / track.rate + track.phase + offset
     cycle = math.floor(pos)
     p = pos - cycle
 
     amount = RENDERERS[track.shape](track, p, cycle, energy)
+
+    # A linked track can run upside down: bright where its leader is dark.
+    if track.invert:
+        amount = 1.0 - amount
 
     # Energy scales the *depth* of the pattern, not its brightness: at low
     # energy a strobe becomes a shimmer rather than simply a dimmer strobe.

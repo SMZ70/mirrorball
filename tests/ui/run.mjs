@@ -6,6 +6,7 @@
  * to test a build step it does not have.
  */
 
+import groups from "./groups.test.mjs";
 import help from "./help.test.mjs";
 import presets from "./presets.test.mjs";
 import sliders from "./sliders.test.mjs";
@@ -15,6 +16,7 @@ const SUITES = [
   ["sliders — a drag must survive the redraw and the echo", sliders],
   ["tempo   — the panel owns the bpm, except after TAP", tempo],
   ["presets — the cards must not lie about what is loaded", presets],
+  ["groups  — one light, one track; a follower has no pattern", groups],
   ["help    — every setting explains itself", help],
 ];
 

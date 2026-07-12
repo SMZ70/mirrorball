@@ -8,11 +8,11 @@ from mmdj.core.clock import Clock
 from mmdj.core.color import lerp_hue
 from mmdj.core.engine import render_show
 from mmdj.core.patterns import render
-from mmdj.core.show import ColorMode, Curve, Palette, Shape, Show, Track
+from mmdj.core.show import ColorMode, Curve, Link, Palette, Shape, Show, Track
 
 
 def _track(**kw) -> Track:
-    base = dict(id="t1", target="l1", shape=Shape.PULSE, rate=1.0)
+    base = dict(id="t1", targets=["l1"], shape=Shape.PULSE, rate=1.0)
     return Track(**{**base, **kw})
 
 
@@ -53,8 +53,8 @@ def test_rate_is_in_beats_so_tempo_changes_move_everything_together():
 
 def test_phase_staggers_tracks_against_each_other():
     """Phase is what makes a wave run around the room."""
-    a = _track(id="a", target="l1", phase=0.0, shape=Shape.CHASE, duty=0.5)
-    b = _track(id="b", target="l2", phase=0.5, shape=Shape.CHASE, duty=0.5)
+    a = _track(id="a", targets=["l1"], phase=0.0, shape=Shape.CHASE, duty=0.5)
+    b = _track(id="b", targets=["l2"], phase=0.5, shape=Shape.CHASE, duty=0.5)
     # At beat 0 the first light is on and the second is not
     assert render(a, 0.0).brightness > 0
     assert render(b, 0.0).brightness == 0
@@ -102,15 +102,15 @@ def test_brightness_never_leaves_the_legal_range():
 
 def test_solo_beats_mute_like_every_mixer_ever_built():
     show = Show(tracks=[
-        _track(id="a", target="l1"),
-        _track(id="b", target="l2", solo=True),
-        _track(id="c", target="l3", mute=True),
+        _track(id="a", targets=["l1"]),
+        _track(id="b", targets=["l2"], solo=True),
+        _track(id="c", targets=["l3"], mute=True),
     ])
     assert [t.id for t in show.active_tracks()] == ["b"]
 
 
 def test_blackout_kills_every_light():
-    show = Show(blackout=True, tracks=[_track(id="a", target="l1")])
+    show = Show(blackout=True, tracks=[_track(id="a", targets=["l1"])])
     frames = render_show(show, 1.0)
     assert all(f.brightness == 0 for f in frames.values())
 
@@ -162,31 +162,120 @@ def test_a_full_wheel_palette_actually_travels_the_full_wheel():
 # Presets
 # ---------------------------------------------------------------------------
 
-def test_every_preset_builds_and_renders_legally():
-    """A preset is a recipe, dealt onto whatever lights exist. It must survive
-    a room with one light and a room with a dozen, and never render a frame the
-    bridge would reject."""
+def _lights(count: int):
     from mmdj.bridge import Light
+    return [Light(id=f"l{i}", name=f"L{i}", room="R") for i in range(count)]
+
+
+def test_every_preset_builds_and_renders_legally():
+    """A preset is a recipe, dealt onto whatever lights exist. It must survive a
+    room with one light and a room with a dozen, drive every light exactly once,
+    and never render a frame the bridge would reject."""
     from mmdj.core import presets
 
     for name in presets.names():
         for count in (1, 6, 12):
-            lights = [Light(id=f"l{i}", name=f"L{i}", room="R") for i in range(count)]
+            lights = _lights(count)
             show = presets.build(name, lights)
-            assert len(show.tracks) == count, name
+
+            driven = [light for t in show.tracks for light in t.targets]
+            assert sorted(driven) == sorted(light.id for light in lights), name
+            assert len(driven) == len(set(driven)), f"{name}: a light is driven twice"
             assert 40 <= show.bpm <= 220, name
+
             for beat in (0.0, 0.37, 1.5, 7.25):
-                for frame in render_show(show, beat).values():
+                frames = render_show(show, beat)
+                assert len(frames) == count, name
+                for frame in frames.values():
                     assert 0.0 <= frame.brightness <= 100.0, (name, beat)
                     assert 0.0 <= frame.hue <= 360.0, (name, beat)
 
 
-def test_a_preset_spreads_its_lights_around_the_cycle():
-    """The 'wave' preset is one voice repeated. If every light got the same
-    phase they would all fire at once and there would be no wave."""
-    from mmdj.bridge import Light
+# ---------------------------------------------------------------------------
+# Groups and links
+# ---------------------------------------------------------------------------
+
+def test_a_group_at_spread_zero_moves_as_one():
+    """'all' + spread 0 is what makes the room a single lamp."""
     from mmdj.core import presets
 
-    lights = [Light(id=f"l{i}", name=f"L{i}", room="R") for i in range(4)]
-    phases = [t.phase for t in presets.build("wave", lights).tracks]
-    assert len(set(phases)) == 4, phases
+    show = presets.build("rave", _lights(4))
+    assert len(show.tracks) == 1                       # one track, four lights
+    assert show.tracks[0].spread == 0.0
+
+    for beat in (0.0, 0.3, 1.7):
+        bri = {f.brightness for f in render_show(show, beat).values()}
+        assert len(bri) == 1, (beat, bri)              # every light identical
+
+
+def test_spread_makes_the_same_group_travel():
+    """Same layout as `rave`, one number different -- and now it is a wave. If
+    spread were ignored the lights would all fire together and there would be
+    no wave at all."""
+    from mmdj.core import presets
+
+    show = presets.build("wave", _lights(4))
+    assert len(show.tracks) == 1
+    assert show.tracks[0].spread == 1.0
+
+    moved = any(
+        len({round(f.brightness, 3) for f in render_show(show, beat).values()}) > 1
+        for beat in (0.0, 0.25, 0.5, 0.75, 1.0)
+    )
+    assert moved, "spread=1 rendered every light the same: the wave is not travelling"
+
+
+def test_a_follower_takes_the_leaders_pattern_and_keeps_its_own_place():
+    show = Show(tracks=[
+        _track(id="a", targets=["l1"], shape=Shape.STROBE, rate=2.0, duty=0.25,
+               palette=Palette(hue_from=40, hue_to=40, mode=ColorMode.HOLD)),
+        _track(id="b", targets=["l2"], shape=Shape.BREATHE, rate=8.0, level=0.5,
+               link=Link(follow="a", rate_scale=2.0, hue_shift=180)),
+    ])
+    follower = show.effective(show.tracks[1])
+
+    assert follower.shape is Shape.STROBE       # the leader's pattern...
+    assert follower.duty == 0.25
+    assert follower.rate == 4.0                 # ...at half speed
+    assert follower.palette.hue_from == 220.0   # ...in the opposite colour
+    assert follower.targets == ["l2"]           # ...but its own lights
+    assert follower.level == 0.5                # ...and its own level
+
+
+def test_invert_makes_a_follower_bright_where_its_leader_is_dark():
+    show = Show(tracks=[
+        _track(id="a", targets=["l1"], shape=Shape.PULSE, curve=Curve.SINE),
+        _track(id="b", targets=["l2"], link=Link(follow="a", invert=True)),
+    ])
+    for beat in (0.0, 0.25, 0.5, 0.9):
+        frames = render_show(show, beat)
+        assert frames["l1"].brightness + frames["l2"].brightness == pytest.approx(100.0)
+
+
+def test_a_link_to_a_track_that_is_not_there_is_just_a_track():
+    """Delete the leader and the follower must keep playing, not explode."""
+    show = Show(tracks=[_track(id="b", targets=["l2"], link=Link(follow="ghost"))])
+    assert show.effective(show.tracks[0]).link is None
+    assert render_show(show, 1.0)["l2"].brightness >= 0
+
+
+def test_linking_cannot_loop():
+    """Two tracks following each other must still render. Linking is one level
+    deep by construction: a follower takes its leader's OWN pattern, never the
+    leader's leader -- so there is no chain to go round."""
+    show = Show(tracks=[
+        _track(id="a", targets=["l1"], shape=Shape.STROBE, link=Link(follow="b")),
+        _track(id="b", targets=["l2"], shape=Shape.CHASE, link=Link(follow="a")),
+    ])
+    frames = render_show(show, 0.4)              # would hang or recurse if it looped
+    assert set(frames) == {"l1", "l2"}
+
+
+def test_a_v1_show_still_loads():
+    """Shows saved before tracks could hold more than one light. They are the
+    user's work; the schema's history is not their problem."""
+    v1 = ('{"version":1,"name":"old","bpm":120,"tracks":[{"id":"t0","target":"l9",'
+          '"shape":"pulse","rate":1.0}]}')
+    show = Show.model_validate_json(v1)
+    assert show.tracks[0].targets == ["l9"]
+    assert render_show(show, 0.5)["l9"].brightness >= 0

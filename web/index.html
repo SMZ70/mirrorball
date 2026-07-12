@@ -127,6 +127,17 @@
   #err.show { display:block; }
   .hint { font-size:12px; color:var(--muted); }
 
+  /* A grouped or linked track says so on its head, so the structure of the show
+     is readable without opening anything. */
+  .chip.g { background:#123049; color:#7fc7ff; }
+  .chip.l { background:#2b1f3d; color:#c9a6ff; }
+  .note {
+    margin:2px 0 9px; padding:8px 10px; border-radius:9px;
+    background:#1a1533; border:1px solid #2f2a4d;
+    font-size:11px; line-height:1.45; color:#b9aee6;
+  }
+  .note b { color:#e2d9ff; }
+
   /* ── Help ───────────────────────────────────────────────────────────────
      A phone has no hover, so there is nowhere to hide a tooltip. Help is a
      mode instead: press ?, and every control explains itself in place. Off by

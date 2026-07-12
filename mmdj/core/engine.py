@@ -22,19 +22,24 @@ from mmdj.drivers.base import Driver
 def render_show(show: Show, beat: float) -> dict[str, Frame]:
     """Every light's frame at this beat. Pure: no I/O, no clock, no surprises."""
     if show.blackout:
-        return {t.target: Frame(0.0, 0.0, 0.0) for t in show.tracks}
+        return {light: Frame(0.0, 0.0, 0.0) for t in show.tracks for light in t.targets}
 
     energy = show.master.energy
     master = show.master.brightness
 
     frames: dict[str, Frame] = {}
     for track in show.active_tracks():
-        frame = render(track, beat, energy)
-        frames[track.target] = Frame(
-            hue=frame.hue,
-            saturation=frame.saturation,
-            brightness=frame.brightness * master,
-        )
+        # A track drives a set of lights, and `spread` deals its pattern across
+        # them -- so one track can be a group (unison) or a wave (staggered).
+        pattern = show.effective(track)          # resolves a link, if it has one
+        count = len(track.targets)
+        for i, light in enumerate(track.targets):
+            frame = render(pattern, beat, energy, index=i, count=count)
+            frames[light] = Frame(
+                hue=frame.hue,
+                saturation=frame.saturation,
+                brightness=frame.brightness * master,
+            )
     return frames
 
 
