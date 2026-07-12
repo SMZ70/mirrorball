@@ -31,7 +31,7 @@ export default async function (t) {
           p.$("#guide").textContent.includes("hides"), true);
   t.check("and that stop hands the lights back",
           p.$("#guide").textContent.includes("hands the lights back"), true);
-  t.check("it is remembered", p.window.localStorage.getItem("mmdj.help"), "1");
+  t.check("it is remembered", p.window.localStorage.getItem("mirrorball.help"), "1");
 
   // The two controls that only exist in context must explain themselves there,
   // and nowhere else -- help for a control you cannot see is noise.

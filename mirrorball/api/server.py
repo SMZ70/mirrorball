@@ -32,12 +32,12 @@ from fastapi.responses import FileResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from loguru import logger
 
-from mmdj.bridge import Area, Credentials, Light, discover
-from mmdj.core import presets, store
-from mmdj.core.clock import Clock
-from mmdj.core.engine import Engine
-from mmdj.core.show import Show
-from mmdj.drivers.stream import StreamDriver
+from mirrorball.bridge import Area, Credentials, Light, discover
+from mirrorball.core import presets, store
+from mirrorball.core.clock import Clock
+from mirrorball.core.engine import Engine
+from mirrorball.core.show import Show
+from mirrorball.drivers.stream import StreamDriver
 
 WEB = Path(__file__).parent.parent.parent / "web"
 BROADCAST_HZ = 10.0        # UI refresh; the lights render at 50
@@ -95,8 +95,9 @@ class Panel:
             await self.engine.stop()
             self.engine = None
         # Hand the lights back: while we stream, the bridge gives us exclusive
-        # ownership and mmhue/the bot cannot touch them. Stopping must release
-        # them, or the rest of the house silently stops working.
+        # ownership and nothing else -- the Hue app, your automations -- can
+        # touch them. Stopping must release them, or the rest of your lighting
+        # silently stops working.
         logger.info("stopped; lights released back to the bridge")
 
     # ── Panels ───────────────────────────────────────────────────────────────
@@ -136,7 +137,7 @@ class Panel:
 
 
 def create_app(panel: Panel) -> FastAPI:
-    app = FastAPI(title="mmdj", docs_url=None, redoc_url=None)
+    app = FastAPI(title="mirrorball", docs_url=None, redoc_url=None)
     security = HTTPBasic(auto_error=bool(panel.password))
 
     def auth(creds: HTTPBasicCredentials | None = Depends(security)) -> None:  # noqa: B008

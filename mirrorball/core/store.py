@@ -12,7 +12,7 @@ from pathlib import Path
 
 from loguru import logger
 
-from mmdj.core.show import Show
+from mirrorball.core.show import Show
 
 SHOWS_DIR = Path("shows")
 

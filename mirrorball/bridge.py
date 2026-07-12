@@ -15,7 +15,7 @@ from pathlib import Path
 import aiohttp
 from loguru import logger
 
-from mmdj.drivers.stream import Channel
+from mirrorball.drivers.stream import Channel
 
 CREDENTIALS = Path("bridge.json")
 
@@ -66,7 +66,7 @@ async def _get(session: aiohttp.ClientSession, host: str, resource: str) -> list
 
 
 async def discover(creds: Credentials) -> tuple[list[Light], list[Area]]:
-    """Everything the panel needs to know about the house."""
+    """Everything the panel needs to know about the installation."""
     async with aiohttp.ClientSession(
         connector=aiohttp.TCPConnector(ssl=_ssl_context()),
         headers={"hue-application-key": creds.app_key},

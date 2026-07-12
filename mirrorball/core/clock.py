@@ -1,4 +1,4 @@
-"""The beat clock. Everything in mmdj is a function of this.
+"""The beat clock. Everything in mirrorball is a function of this.
 
 Rates are expressed in beats, never seconds, so changing the tempo moves the
 whole show together instead of leaving half of it behind.

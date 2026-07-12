@@ -7,6 +7,7 @@ shows/*.json
 
 # credentials
 bridge.json
+bridge.json.old
 
 # UI test deps (installed on demand by scripts/test-ui.sh)
 tests/ui/node_modules/

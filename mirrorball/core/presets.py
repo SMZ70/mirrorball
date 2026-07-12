@@ -1,8 +1,8 @@
-"""Shows that ship with mmdj.
+"""Shows that ship with mirrorball.
 
 A preset is NOT a saved Show. A saved Show names the lights it drives, and those
-names are this house's -- they would be meaningless on another bridge, and they
-have no business in the repo. A preset is a list of *voices* instead: "the first
+names belong to one installation -- they would be meaningless on another bridge,
+and they have no business in the repo. A preset is a list of *voices* instead: "the first
 light does a hot chase, the second answers with a strobe". Voices are dealt onto
 whatever lights the entertainment area actually has.
 
@@ -16,8 +16,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 
-from mmdj.bridge import Light
-from mmdj.core.show import ColorMode, Curve, Link, Master, Palette, Shape, Show, Track
+from mirrorball.bridge import Light
+from mirrorball.core.show import ColorMode, Curve, Link, Master, Palette, Shape, Show, Track
 
 
 class Layout(StrEnum):
@@ -67,7 +67,7 @@ class Preset:
 
 PRESETS: dict[str, Preset] = {
 
-    # Everything at once: every light a different pattern. The house's default.
+    # Everything at once: every light a different pattern. The default.
     "party": Preset(bpm=120, note="one of each — the tour", voices=[
         Voice(Shape.PULSE,   Curve.SINE,   1.0,  (30, 55)),
         Voice(Shape.CHASE,   Curve.FALL,   1.0,  (320, 350)),

@@ -48,7 +48,7 @@ class DtlsPipe:
 
     async def open(self) -> None:
         if not shutil.which("openssl"):
-            raise RuntimeError("openssl is not installed; it is how mmdj speaks DTLS")
+            raise RuntimeError("openssl is not installed; it is how mirrorball speaks DTLS")
 
         self._proc = await asyncio.create_subprocess_exec(
             "openssl", "s_client",

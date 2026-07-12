@@ -24,10 +24,10 @@ from dataclasses import dataclass
 import aiohttp
 from loguru import logger
 
-from mmdj.core.color import hue_to_rgb
-from mmdj.core.patterns import Frame
-from mmdj.drivers.base import Driver
-from mmdj.drivers.dtls import DtlsPipe
+from mirrorball.core.color import hue_to_rgb
+from mirrorball.core.patterns import Frame
+from mirrorball.drivers.base import Driver
+from mirrorball.drivers.dtls import DtlsPipe
 
 STREAM_PORT = 2100
 PROTOCOL = b"HueStream"

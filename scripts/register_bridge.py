@@ -1,9 +1,9 @@
 """Register with the Hue bridge and get an Entertainment clientkey.
 
 The clientkey (a DTLS pre-shared key) is issued ONLY at the moment an app key is
-created, and only if you ask for it. mmhue's registration never did, which is
-why streaming is not available to us today -- the existing key cannot be
-upgraded, it has to be a fresh one.
+created, and only if you ask for it. Most Hue libraries do not, so an app key you
+already have probably cannot stream: a key cannot be upgraded after the fact, it
+has to be a fresh one.
 
 Requires someone to press the physical link button on the bridge. This polls for
 a minute so the press does not have to be perfectly timed.
@@ -22,7 +22,7 @@ from pathlib import Path
 import aiohttp
 
 POLL_SECONDS = 60
-DEVICE_TYPE = "mmdj#sequencer"
+DEVICE_TYPE = "mirrorball#sequencer"
 
 
 async def register(host: str) -> dict | None:

@@ -1,18 +1,25 @@
 #!/usr/bin/env bash
-# Ship mmdj to the Pi and rebuild.
+# Ship mirrorball to a host (a Raspberry Pi, say) and rebuild there.
+#
+#   MIRRORBALL_SSH=pi ./scripts/deploy.sh
 #
 # bridge.json is rsynced but never committed or baked into the image -- it is
 # mounted in at runtime, which is what keeps this repo publishable.
 set -euo pipefail
 
-HOST="${MMDJ_HOST_SSH:-pi}"
-DIR="${MMDJ_DIR:-mmdj}"
+HOST="${MIRRORBALL_SSH:-}"
+DIR="${MIRRORBALL_DIR:-mirrorball}"
+
+if [ -z "$HOST" ]; then
+    echo "set MIRRORBALL_SSH to an ssh host, e.g. MIRRORBALL_SSH=pi $0" >&2
+    exit 2
+fi
 
 cd "$(dirname "$0")/.."
 
 rsync -az --delete \
     --exclude '.venv/' --exclude '.git/' --exclude '.pytest_cache/' \
-    --exclude '.ruff_cache/' --exclude '__pycache__/' --exclude 'bridge.json.old' \
+    --exclude '.ruff_cache/' --exclude '__pycache__/' \
     ./ "$HOST:~/$DIR/"
 
 ssh "$HOST" "mkdir -p ~/$DIR/shows && cd ~/$DIR && docker compose up -d --build"

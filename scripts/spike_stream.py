@@ -21,9 +21,9 @@ from pathlib import Path
 
 import aiohttp
 
-from mmdj.core.color import hue_to_rgb  # noqa: F401  (proves the import graph)
-from mmdj.core.patterns import Frame
-from mmdj.drivers.stream import Channel, StreamDriver
+from mirrorball.core.color import hue_to_rgb  # noqa: F401  (proves the import graph)
+from mirrorball.core.patterns import Frame
+from mirrorball.drivers.stream import Channel, StreamDriver
 
 CREDS = Path(__file__).parent.parent / "bridge.json"
 

@@ -1,5 +1,5 @@
 {
-  "name": "mmdj-ui-tests",
+  "name": "mirrorball-ui-tests",
   "private": true,
   "type": "module",
   "description": "The panel, driven in jsdom against the real index.html and app.js",

@@ -1,4 +1,4 @@
-// mmdj panel.
+// mirrorball panel.
 //
 // It edits the Show and sends it. It never talks to a light, never renders a
 // frame, never keeps a second copy of the truth. That is what keeps it small
@@ -114,7 +114,7 @@ let wantShow = false;  // we asked for a show (a load); take the next one
 let drawn = "";        // what the track list currently displays
 let loaded = null;     // {name, key} of the show as it arrived, before edits
 let tapping = false;   // we asked the server to measure a tap; take its answer
-let helpOn = localStorage.getItem("mmdj.help") === "1";
+let helpOn = localStorage.getItem("mirrorball.help") === "1";
 
 const $ = (id) => document.getElementById(id);
 
@@ -202,7 +202,7 @@ function tap() {
 
 function toggleHelp() {
   helpOn = !helpOn;
-  localStorage.setItem("mmdj.help", helpOn ? "1" : "0");
+  localStorage.setItem("mirrorball.help", helpOn ? "1" : "0");
   drawn = "";                        // the help lines live inside the track list
   render();
 }

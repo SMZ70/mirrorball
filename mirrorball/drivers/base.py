@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
-from mmdj.core.patterns import Frame
+from mirrorball.core.patterns import Frame
 
 
 class Driver(ABC):

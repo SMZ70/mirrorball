@@ -5,6 +5,5 @@
 __pycache__/
 shows/
 bridge.json
-bridge.json.old
 scripts/
 tests/

@@ -1,0 +1,5 @@
+{
+  "host": "192.168.1.2",
+  "app_key": "<40-char app key from the bridge>",
+  "client_key": "<32-hex-char clientkey, the DTLS pre-shared key>"
+}

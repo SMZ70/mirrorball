@@ -68,7 +68,7 @@ export const state = (over = {}) => ({
 export async function boot() {
   const dom = new JSDOM(HTML, {
     runScripts: "dangerously",
-    url: "http://mmdj.test/",
+    url: "http://mirrorball.test/",
     pretendToBeVisual: true,
     virtualConsole: new VirtualConsole(),   // jsdom's "not implemented" noise
   });

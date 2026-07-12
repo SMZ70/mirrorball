@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import pytest
 
-from mmdj.core.clock import Clock
-from mmdj.core.color import lerp_hue
-from mmdj.core.engine import render_show
-from mmdj.core.patterns import render
-from mmdj.core.show import ColorMode, Curve, Link, Palette, Shape, Show, Track
+from mirrorball.core.clock import Clock
+from mirrorball.core.color import lerp_hue
+from mirrorball.core.engine import render_show
+from mirrorball.core.patterns import render
+from mirrorball.core.show import ColorMode, Curve, Link, Palette, Shape, Show, Track
 
 
 def _track(**kw) -> Track:
@@ -30,8 +30,9 @@ def test_same_beat_always_renders_the_same_frame():
 def test_nothing_accumulates_over_time():
     """Replaying a beat after thousands of others gives the same frame.
 
-    Every dance in mmhue broke this way: state mutated frame to frame until
-    brightness piled up and the contrast washed out. A pure function cannot.
+    The effects this replaces broke this way: state mutated frame to frame
+    until brightness piled up and the contrast washed out. A pure function
+    cannot.
     """
     t = _track(shape=Shape.PULSE)
     first = render(t, 0.25)
@@ -151,7 +152,7 @@ def test_a_stale_tap_starts_a_new_measurement():
 def test_a_full_wheel_palette_actually_travels_the_full_wheel():
     """0 -> 360 is the same point on the wheel; shortest-path interpolation
     would sit still. A palette range must travel forwards instead."""
-    from mmdj.core.color import hue_in_range
+    from mirrorball.core.color import hue_in_range
 
     assert hue_in_range(0, 360, 0.5) == pytest.approx(180.0)
     assert hue_in_range(350, 10, 0.5) == pytest.approx(0.0)     # crosses zero
@@ -163,7 +164,7 @@ def test_a_full_wheel_palette_actually_travels_the_full_wheel():
 # ---------------------------------------------------------------------------
 
 def _lights(count: int):
-    from mmdj.bridge import Light
+    from mirrorball.bridge import Light
     return [Light(id=f"l{i}", name=f"L{i}", room="R") for i in range(count)]
 
 
@@ -171,7 +172,7 @@ def test_every_preset_builds_and_renders_legally():
     """A preset is a recipe, dealt onto whatever lights exist. It must survive a
     room with one light and a room with a dozen, drive every light exactly once,
     and never render a frame the bridge would reject."""
-    from mmdj.core import presets
+    from mirrorball.core import presets
 
     for name in presets.names():
         for count in (1, 6, 12):
@@ -197,7 +198,7 @@ def test_every_preset_builds_and_renders_legally():
 
 def test_a_group_at_spread_zero_moves_as_one():
     """'all' + spread 0 is what makes the room a single lamp."""
-    from mmdj.core import presets
+    from mirrorball.core import presets
 
     show = presets.build("rave", _lights(4))
     assert len(show.tracks) == 1                       # one track, four lights
@@ -212,7 +213,7 @@ def test_spread_makes_the_same_group_travel():
     """Same layout as `rave`, one number different -- and now it is a wave. If
     spread were ignored the lights would all fire together and there would be
     no wave at all."""
-    from mmdj.core import presets
+    from mirrorball.core import presets
 
     show = presets.build("wave", _lights(4))
     assert len(show.tracks) == 1

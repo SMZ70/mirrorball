@@ -13,10 +13,10 @@ import time
 
 from loguru import logger
 
-from mmdj.core.clock import Clock
-from mmdj.core.patterns import Frame, render
-from mmdj.core.show import Show
-from mmdj.drivers.base import Driver
+from mirrorball.core.clock import Clock
+from mirrorball.core.patterns import Frame, render
+from mirrorball.core.show import Show
+from mirrorball.drivers.base import Driver
 
 
 def render_show(show: Show, beat: float) -> dict[str, Frame]:

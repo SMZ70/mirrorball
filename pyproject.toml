@@ -3,9 +3,9 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "mmdj"
+name = "mirrorball"
 version = "0.1.0"
-description = "A light sequencer for the house — patterns, tempo, shows"
+description = "A light sequencer for Philips Hue — patterns, tempo, shows, streamed at 50fps"
 requires-python = ">=3.12"
 dependencies = [
     "pydantic>=2.0",

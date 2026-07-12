@@ -5,11 +5,12 @@
 No state. No I/O. No mutation between calls. Given the same beat you get the
 same frame, always.
 
-That is not purism -- it is the fix for a specific class of bug. The dances in
-mmhue mutated state frame to frame and every one of them broke the same way:
-brightness accumulated until the contrast washed out; lights were left stranded
-lit when a dance was cancelled; a restore captured the room mid-strobe. None of
-those can happen here, because there is nothing to accumulate.
+That is not purism -- it is the fix for a specific class of bug. The effects
+this replaces mutated state frame to frame, and every one of them broke the same
+way: brightness accumulated until the contrast washed out; lights were left
+stranded lit when an effect was cancelled; a restore captured the room
+mid-strobe. None of those can happen here, because there is nothing to
+accumulate.
 """
 
 from __future__ import annotations
@@ -19,8 +20,8 @@ import random
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from mmdj.core.color import clamp01, hue_in_range, lerp
-from mmdj.core.show import ColorMode, Curve, Shape, Track
+from mirrorball.core.color import clamp01, hue_in_range, lerp
+from mirrorball.core.show import ColorMode, Curve, Shape, Track
 
 
 @dataclass(frozen=True, slots=True)
