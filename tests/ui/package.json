@@ -1,0 +1,8 @@
+{
+  "name": "mmdj-ui-tests",
+  "private": true,
+  "type": "module",
+  "description": "The panel, driven in jsdom against the real index.html and app.js",
+  "scripts": { "test": "node run.mjs" },
+  "devDependencies": { "jsdom": "^29.1.1" }
+}

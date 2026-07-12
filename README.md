@@ -107,5 +107,22 @@ not a rewrite.
 ## Tests
 
 ```bash
-uv run pytest       # the core is pure: no bridge, no lights, no sleeping
+uv run pytest         # the core is pure: no bridge, no lights, no sleeping
+./scripts/test-ui.sh  # the panel, driven in jsdom (installs jsdom on first run)
 ```
+
+The UI tests load the **real** `index.html` and `app.js` and drive them through a
+fake WebSocket. That is the point: every panel bug so far has lived in the seam
+between the panel and the socket, and a test that mocked either side would have
+missed all of them.
+
+The one that keeps coming back: **the server broadcasts the whole show ten times
+a second, and if the panel takes those echoes it undoes whatever the user is
+doing right now.** It ate the sliders (the dragged element was destroyed and
+replaced mid-drag, and the value snapped back) and then the tempo (a typed bpm
+was overwritten by the server's clock). So the fixtures deliberately echo a
+*stale* show, and the tests assert the panel's own value survives.
+
+The panel owns the Show. The server's copy is adopted exactly twice: at connect,
+and when the panel asks for one (a load). Plus the bpm, but only right after a
+TAP — because there the server did the measuring.
