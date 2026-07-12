@@ -1,0 +1,17 @@
+services:
+  panel:
+    build: .
+    image: mmdj:latest
+    restart: unless-stopped
+    ports:
+      - "8090:8090"
+    volumes:
+      # Credentials live on the host, never in the image or the repo.
+      - ./bridge.json:/app/bridge.json:ro
+      # Saved shows must survive a rebuild -- they are the user's work.
+      - ./shows:/app/shows
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

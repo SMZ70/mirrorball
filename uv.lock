@@ -197,15 +197,6 @@ wheels = [
 ]
 
 [[package]]
-name = "certifi"
-version = "2026.6.17"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/c9/c7/424b75da314c1045981bd9777432fad05a9e0c69daa4ed7e308bbaffe405/certifi-2026.6.17.tar.gz", hash = "sha256:024c88eeec92ca068db80f02b8b07c9cef7b9fe261d1d535abfd5abd6f6af432", size = 134594, upload-time = "2026-06-17T10:31:07.894Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/ef/2f/c5464532e965badff2f4c4c1a3a83f5697f0d7c407ed0cda44aaa99bb451/certifi-2026.6.17-py3-none-any.whl", hash = "sha256:2227dcbaafe0d2f59279d1762ddddc37783ed4354594f194ffc31d20f41fc3db", size = 133289, upload-time = "2026-06-17T10:31:06.348Z" },
-]
-
-[[package]]
 name = "click"
 version = "8.4.2"
 source = { registry = "https://pypi.org/simple" }
@@ -416,7 +407,6 @@ dependencies = [
     { name = "fastapi" },
     { name = "loguru" },
     { name = "pydantic" },
-    { name = "python-mbedtls" },
     { name = "uvicorn", extra = ["standard"] },
 ]
 
@@ -445,7 +435,6 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.24" },
-    { name = "python-mbedtls", specifier = ">=2.10.1" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.9" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.32" },
     { name = "uvicorn", extras = ["standard"], marker = "extra == 'api'", specifier = ">=0.32" },
@@ -799,23 +788,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/82/ed/0301aeeac3e5353ef3d94b6ec08bbcabd04a72018415dcb29e588514bba8/python_dotenv-1.2.2.tar.gz", hash = "sha256:2c371a91fbd7ba082c2c1dc1f8bf89ca22564a087c2c287cd9b662adde799cf3", size = 50135, upload-time = "2026-03-01T16:00:26.196Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/0b/d7/1959b9648791274998a9c3526f6d0ec8fd2233e4d4acce81bbae76b44b2a/python_dotenv-1.2.2-py3-none-any.whl", hash = "sha256:1d8214789a24de455a8b8bd8ae6fe3c6b69a5e3d64aa8a8e5d68e694bbcb285a", size = 22101, upload-time = "2026-03-01T16:00:25.09Z" },
-]
-
-[[package]]
-name = "python-mbedtls"
-version = "2.10.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "certifi" },
-    { name = "typing-extensions" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/13/93/6ab1d8abcf21d3f3041974130110b1af0c5803302c56131932ee8300a5ed/python-mbedtls-2.10.1.tar.gz", hash = "sha256:a1f8ac8a6e810f80d3e8d26561e787d04047c2d098e9ce21b9266174f124e00c", size = 107670, upload-time = "2024-04-27T15:30:36.352Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/a0/cd/2a658d91cc4da70b043a69127a2411c6f23d0756a20d7d83e9786e4479b8/python_mbedtls-2.10.1-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:2dccf478a00762d60033bc11a202dfc5f3f1da4921cb793f6741a29c3ab34771", size = 1523855, upload-time = "2024-04-27T15:30:05.327Z" },
-    { url = "https://files.pythonhosted.org/packages/4e/b9/1db234ec1fe656386171f9acd894662f08c3ad196df6d5c2440b6ad32a07/python_mbedtls-2.10.1-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:38fe76bcd959c4a3ae575df6d5957bbf2005b5a1119d1625bc0e3da889212b16", size = 7967136, upload-time = "2024-04-27T15:30:07.756Z" },
-    { url = "https://files.pythonhosted.org/packages/1c/fd/888e9d0f90475ff14b03f0f5fc8ddf835078b83f1d33ba57507272ed1cc8/python_mbedtls-2.10.1-cp312-cp312-musllinux_1_1_i686.whl", hash = "sha256:c9ad78bee9e7460d8291b78451d309debd49cdf82faeee2d2a378c6947dd5477", size = 7481639, upload-time = "2024-04-27T15:30:10.201Z" },
-    { url = "https://files.pythonhosted.org/packages/ea/50/823a19eed63dc0d7586c15c6ecdc531f8d182308668d8c38c639d4794955/python_mbedtls-2.10.1-cp312-cp312-musllinux_1_1_x86_64.whl", hash = "sha256:00af93c71fc408f4d886070b436449afa0e53ad5e5b98eb382ad91358c2c33ef", size = 7962809, upload-time = "2024-04-27T15:30:12.188Z" },
-    { url = "https://files.pythonhosted.org/packages/ed/36/6860a73b2a85a3316f8f9728612381080386b72bf829134fe08a2ac01e71/python_mbedtls-2.10.1-cp312-cp312-win_amd64.whl", hash = "sha256:274dfe1e5712c6a8a07cf3a092a2b43967d83ff23e1534b46b0aa6b41a52ddd0", size = 1751911, upload-time = "2024-04-27T15:30:14.51Z" },
 ]
 
 [[package]]
