@@ -20,9 +20,32 @@ icon.
 
 - **▶ / ■** — play, and hand the lights back
 - **TAP** — tap four times in time with the music; everything locks to that tempo
-- **BLACK** — blackout
+- **BLACK** — force every light to zero without stopping. The show keeps running
+  underneath, still on the beat, so releasing it drops you back in time rather
+  than restarting. It is the "kill the room for a second" button, not ■.
 - tap any light to set its **shape, rate, colour range, phase** — live, while it plays
-- **Save** — name a show and recall it later
+- **Presets** — tap one to load it (see below)
+- **My shows** — tap a saved show to load it; **Save** names the current one
+
+## Presets
+
+Eight ship with mmdj: `party` `bandari` `birthday` `chill` `rave` `wave` `fire`
+`sunset`. Tap one and it loads — including while a show is playing, which swaps
+the lights over without a gap.
+
+A preset is **not** a saved show. A saved show names the lights it drives, and
+those ids belong to one house; a preset is a list of *voices* ("first light does
+a hot chase, second answers with a strobe") that get dealt onto whatever lights
+the entertainment area actually has, cycling if there are more lights than
+voices. So presets work on any bridge, and nothing about this house is in the
+repo.
+
+Add one by adding an entry to `PRESETS` in `mmdj/core/presets.py`. There is
+nothing else to touch, and a test builds every preset against 1, 6 and 12 lights
+to make sure it still renders.
+
+A preset is a starting point, not a straitjacket: load one, change it, name it,
+Save. It lands in `shows/` as your own show and the preset stays pristine.
 
 ## Deploy from a laptop
 

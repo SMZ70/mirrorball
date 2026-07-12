@@ -110,6 +110,7 @@
     background:#2a1016; border:1px solid var(--hot); color:#ffb3c4; font-size:12px;
   }
   #err.show { display:block; }
+  .hint { font-size:12px; color:var(--muted); }
 </style>
 </head>
 <body>
@@ -126,15 +127,18 @@
 
 <div id="err"></div>
 
+<h2>Presets</h2>
+<div class="grid" id="presets"></div>
+
 <h2>Tracks <span id="area" style="text-transform:none;letter-spacing:0"></span></h2>
 <div id="tracks"></div>
 
-<h2>Shows</h2>
-<div class="row">
-  <input type="text" id="name" placeholder="show name" />
+<h2>My shows <small style="text-transform:none;letter-spacing:0;opacity:.5">— tap to load</small></h2>
+<div class="grid" id="shows"></div>
+<div class="row" style="margin-top:7px">
+  <input type="text" id="name" placeholder="name it…" />
   <button onclick="saveShow()">Save</button>
 </div>
-<div class="grid" id="shows"></div>
 
 <script src="/app.js"></script>
 </body>

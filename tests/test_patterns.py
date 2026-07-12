@@ -156,3 +156,37 @@ def test_a_full_wheel_palette_actually_travels_the_full_wheel():
     assert hue_in_range(0, 360, 0.5) == pytest.approx(180.0)
     assert hue_in_range(350, 10, 0.5) == pytest.approx(0.0)     # crosses zero
     assert hue_in_range(30, 50, 0.5) == pytest.approx(40.0)
+
+
+# ---------------------------------------------------------------------------
+# Presets
+# ---------------------------------------------------------------------------
+
+def test_every_preset_builds_and_renders_legally():
+    """A preset is a recipe, dealt onto whatever lights exist. It must survive
+    a room with one light and a room with a dozen, and never render a frame the
+    bridge would reject."""
+    from mmdj.bridge import Light
+    from mmdj.core import presets
+
+    for name in presets.names():
+        for count in (1, 6, 12):
+            lights = [Light(id=f"l{i}", name=f"L{i}", room="R") for i in range(count)]
+            show = presets.build(name, lights)
+            assert len(show.tracks) == count, name
+            assert 40 <= show.bpm <= 220, name
+            for beat in (0.0, 0.37, 1.5, 7.25):
+                for frame in render_show(show, beat).values():
+                    assert 0.0 <= frame.brightness <= 100.0, (name, beat)
+                    assert 0.0 <= frame.hue <= 360.0, (name, beat)
+
+
+def test_a_preset_spreads_its_lights_around_the_cycle():
+    """The 'wave' preset is one voice repeated. If every light got the same
+    phase they would all fire at once and there would be no wave."""
+    from mmdj.bridge import Light
+    from mmdj.core import presets
+
+    lights = [Light(id=f"l{i}", name=f"L{i}", room="R") for i in range(4)]
+    phases = [t.phase for t in presets.build("wave", lights).tracks]
+    assert len(set(phases)) == 4, phases

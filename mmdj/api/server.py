@@ -33,7 +33,7 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from loguru import logger
 
 from mmdj.bridge import Area, Credentials, Light, discover
-from mmdj.core import store
+from mmdj.core import presets, store
 from mmdj.core.clock import Clock
 from mmdj.core.engine import Engine
 from mmdj.core.show import Show
@@ -109,6 +109,7 @@ class Panel:
             "beat": round(self.clock.beat(), 3),
             "bpm": round(self.clock.bpm, 1),
             "shows": store.names(),
+            "presets": presets.names(),
             "lights": [
                 {"id": light.id, "name": light.name, "room": light.room}
                 for light in self.streamable_lights()
@@ -220,9 +221,19 @@ async def handle(panel: Panel, msg: dict) -> None:
             panel.show.name = msg.get("name") or panel.show.name
             store.save(panel.show)
         case "load":
-            panel.show = store.load(msg["name"])
-            panel.clock.set_bpm(panel.show.bpm)
-            if panel.engine:
-                panel.engine.show = panel.show
+            _adopt(panel, store.load(msg["name"]))
+        case "preset":
+            # Built fresh against the lights we have now, not loaded from disk:
+            # a preset is a recipe, and the room may have changed since.
+            _adopt(panel, presets.build(msg["name"], panel.streamable_lights()))
         case _:
             logger.debug("ignoring {}", msg)
+
+
+def _adopt(panel: Panel, show: Show) -> None:
+    """Swap the show under a running engine, without a gap in the lights."""
+    panel.show = show
+    panel.clock.set_bpm(show.bpm)
+    if panel.engine:
+        panel.engine.show = show
+    logger.info("loaded {!r} — {} tracks @ {} bpm", show.name, len(show.tracks), show.bpm)

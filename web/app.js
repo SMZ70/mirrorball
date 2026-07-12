@@ -118,9 +118,16 @@ function saveShow() {
   send({ type: "save", name });
 }
 
+// Loading is the one time we DO want the server's show: it built it (a preset)
+// or read it off disk (a save), so it is the authority, not us.
 function loadShow(name) {
-  wantShow = true;                     // this one we do want from the server
+  wantShow = true;
   send({ type: "load", name });
+}
+
+function loadPreset(name) {
+  wantShow = true;
+  send({ type: "preset", name });
 }
 
 const track = (id) => show.tracks.find((t) => t.id === id);
@@ -264,8 +271,13 @@ function render() {
   const onBeat = state.playing && (state.beat % 1) < 0.18;
   $("beat").classList.toggle("on", onBeat);
 
+  $("presets").innerHTML = (state.presets || [])
+    .map((n) => `<button class="${show.name === n ? "on" : ""}"
+                         onclick="loadPreset('${n}')">${n}</button>`).join("");
+
   $("shows").innerHTML = (state.shows || [])
-    .map((n) => `<button onclick="loadShow('${n}')">${n}</button>`).join("");
+    .map((n) => `<button onclick="loadShow('${n}')">${n}</button>`).join("")
+    || `<span class="hint">nothing saved yet — tweak a preset, name it, hit Save</span>`;
 
   // The expensive half. Rebuild only if what we would draw has actually changed
   // -- and never mid-drag, which would tear the slider out from under the
