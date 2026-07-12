@@ -42,6 +42,36 @@ uv run python scripts/register_bridge.py <bridge-ip>   # press the link button
 Writes `bridge.json` (gitignored): the bridge IP, an app key, and the *clientkey*
 that the Entertainment stream uses as its DTLS pre-shared key.
 
+## Tech stack
+
+| | |
+|---|---|
+| **Language** | Python 3.12, `uv` for deps and lockfile |
+| **Core** | pure functions — a show is rendered *from the beat*, with no accumulated state |
+| **Model** | pydantic — a `Show` is a JSON document, and validation is the schema |
+| **Server** | FastAPI + uvicorn, one WebSocket |
+| **Lights** | Hue **Entertainment API** — UDP, DTLS-PSK, ~50 fps |
+| **DTLS** | `openssl s_client` as a subprocess (see below) |
+| **Discovery** | Hue REST (CLIP v2) over aiohttp — only to ask what lights exist |
+| **Panel** | plain HTML/CSS/JS, no framework, no build step — a PWA you can install |
+| **Logs** | loguru · **Lint** ruff · **Tests** pytest |
+| **Runs on** | Docker, on the Raspberry Pi, `restart: unless-stopped` |
+
+Three decisions carry the design:
+
+**Rendering is a pure function of the beat.** `render(track, beat) -> Frame` — no
+state carried between frames. Replay beat 4 an hour later and you get the same
+frame. Every mmhue dance broke the other way: brightness accumulated frame to
+frame until the contrast washed out. It also means the entire core is testable
+without a bridge, a light, or a `sleep`.
+
+**Rates are in beats, not seconds.** Change the tempo and the whole show moves
+together, because nothing was ever measured in wall-clock time.
+
+**The panel is disposable.** It edits a `Show` and sends it over the socket; it
+never touches a light. A native app later is a new view over the same protocol,
+not a rewrite.
+
 ## Notes for the next person
 
 - **openssl is the DTLS stack.** Frames are piped through `openssl s_client`.
