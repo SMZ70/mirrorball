@@ -56,9 +56,10 @@ def main() -> None:
             logger.info("seeded a starter show with {} tracks", len(panel.show.tracks))
 
     host = os.getenv("MMDJ_HOST", "0.0.0.0")
-    if not panel.password and host != "127.0.0.1":
-        logger.warning("MMDJ_PASSWORD is not set — binding to localhost only")
-        host = "127.0.0.1"
+    if not panel.password:
+        # No password, by request. It only reaches the LAN, and the worst a
+        # stranger on your wifi can do is turn the lights funny colours.
+        logger.warning("no password set — anyone on the LAN can drive the lights")
 
     uvicorn.run(app, host=host, port=int(os.getenv("MMDJ_PORT", "8090")),
                 log_level="info", access_log=False)

@@ -157,13 +157,19 @@ def create_app(panel: Panel) -> FastAPI:
     async def manifest() -> FileResponse:
         return FileResponse(WEB / "manifest.json")
 
+    pump: list[asyncio.Task] = []
+
     @app.on_event("startup")
     async def _startup() -> None:
         await panel.connect_bridge()
-        asyncio.create_task(_pump())
+        pump.append(asyncio.create_task(_pump()))
 
     @app.on_event("shutdown")
     async def _shutdown() -> None:
+        # Cancel the pump explicitly. It loops forever, so without this the
+        # server hangs on "waiting for background tasks" and never exits.
+        for task in pump:
+            task.cancel()
         await panel.stop()
 
     async def _pump() -> None:

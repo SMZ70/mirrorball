@@ -18,17 +18,16 @@ so we get far finer gradations than the REST API ever exposed.
 from __future__ import annotations
 
 import asyncio
-import socket
 import ssl
 from dataclasses import dataclass
 
 import aiohttp
 from loguru import logger
-from mbedtls import tls
 
 from mmdj.core.color import hue_to_rgb
 from mmdj.core.patterns import Frame
 from mmdj.drivers.base import Driver
+from mmdj.drivers.dtls import DtlsPipe
 
 STREAM_PORT = 2100
 PROTOCOL = b"HueStream"
@@ -57,61 +56,30 @@ class StreamDriver(Driver):
         self.area_id = area_id
         self.channels = channels
         self.fps = fps
-        self._dtls: tls.DTLSClientContext | None = None
-        self._sock = None
+        self._dtls: DtlsPipe | None = None
 
     # ── Lifecycle ────────────────────────────────────────────────────────────
 
     async def open(self) -> None:
-        # Release first, then claim. An area can be left stuck in `active` by a
-        # streamer that went away (the Hue app, a Sync box, a crashed run of
-        # this). The bridge then reports `active` and accepts `start` with a
-        # cheerful 200 -- while never opening the UDP port, because as far as it
-        # is concerned somebody else already owns the stream. Stopping first is
-        # what actually makes it listen.
+        """Claim the area, then open the DTLS stream."""
+        # Release then claim. An area can be left `active` by a streamer that
+        # went away; the bridge then answers `start` with a cheerful 200 and
+        # never opens UDP 2100, because it thinks somebody else owns the stream.
         await self._set_streaming(False)
         await asyncio.sleep(0.4)
         await self._set_streaming(True)
-        # It also needs a moment to start listening; connecting too eagerly gets
-        # the handshake refused.
-        await asyncio.sleep(0.7)
-        await asyncio.get_running_loop().run_in_executor(None, self._connect)
+        await asyncio.sleep(0.6)          # it needs a moment to start listening
+
+        self._dtls = DtlsPipe(self.host, STREAM_PORT, self.app_key, self.client_key)
+        await self._dtls.open()
         logger.info("streaming to area {} — {} channels @ {:.0f} fps",
                     self.area_id[:8], len(self.channels), self.fps)
 
     async def close(self) -> None:
-        if self._sock is not None:
-            try:
-                self._sock.close()
-            finally:
-                self._sock = None
+        if self._dtls:
+            await self._dtls.close()
+            self._dtls = None
         await self._set_streaming(False)
-
-    def _connect(self) -> None:
-        """DTLS handshake with a pre-shared key. Blocking, so run it off-loop."""
-        conf = tls.DTLSConfiguration(
-            pre_shared_key=(self.app_key, bytes.fromhex(self.client_key)),
-            ciphers=("TLS-PSK-WITH-AES-128-GCM-SHA256",),
-            validate_certificates=False,
-        )
-        ctx = tls.ClientContext(conf)
-
-        sock = ctx.wrap_socket(
-            socket.socket(socket.AF_INET, socket.SOCK_DGRAM),
-            server_hostname=None,
-        )
-        sock.connect((self.host, STREAM_PORT))
-
-        # A DTLS handshake is a few round trips and can need re-driving
-        for _ in range(30):
-            try:
-                sock.do_handshake()
-                break
-            except tls.WantReadError:
-                continue
-            except tls.WantWriteError:
-                continue
-        self._sock = sock
 
     # ── The frame itself ─────────────────────────────────────────────────────
 
@@ -142,13 +110,9 @@ class StreamDriver(Driver):
         return bytes(out)
 
     async def send(self, frames: dict[str, Frame]) -> None:
-        if self._sock is None:
+        if self._dtls is None:
             return
-        packet = self._packet(frames)
-        try:
-            await asyncio.get_running_loop().run_in_executor(None, self._sock.send, packet)
-        except Exception as exc:                       # a dropped frame is not fatal
-            logger.debug("frame dropped: {}", exc)
+        await self._dtls.send(self._packet(frames))
 
     async def blackout(self) -> None:
         await self.send({ch.light_id: Frame(0, 0, 0) for ch in self.channels})
@@ -166,9 +130,8 @@ class StreamDriver(Driver):
         async with aiohttp.ClientSession(
             connector=aiohttp.TCPConnector(ssl=ctx),
             headers={"hue-application-key": self.app_key},
-        ) as session:
-            async with session.put(url, json=body) as resp:
-                data = await resp.json()
-                if data.get("errors"):
-                    logger.warning("bridge refused {}: {}",
-                                   "start" if on else "stop", data["errors"])
+        ) as session, session.put(url, json=body) as resp:
+            data = await resp.json()
+            if data.get("errors"):
+                logger.warning("bridge refused {}: {}",
+                               "start" if on else "stop", data["errors"])
