@@ -111,6 +111,34 @@
   }
   #err.show { display:block; }
   .hint { font-size:12px; color:var(--muted); }
+
+  /* Presets. A card has to answer "what is this?" before you tap it: a name,
+     the tempo, a word about the feel, and the colours it will put in the room. */
+  #presets { grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); }
+  .preset {
+    display:flex; flex-direction:column; gap:3px; align-items:stretch;
+    padding:0 0 9px; overflow:hidden; text-align:left; text-transform:none;
+    letter-spacing:0; background:var(--panel2); border:1px solid var(--line);
+    border-radius:12px; cursor:pointer;
+  }
+  .preset .strip { height:5px; width:100%; }
+  .preset .prow {
+    display:flex; align-items:baseline; justify-content:space-between;
+    padding:7px 10px 0;
+  }
+  .preset .pname { font-size:14px; font-weight:650; color:var(--text); }
+  .preset .pbpm  { font-size:10px; color:var(--muted); font-variant-numeric:tabular-nums; }
+  .preset .pbpm::after { content:" BPM"; }
+  .preset .pnote {
+    padding:0 10px; font-size:11px; line-height:1.35; color:var(--muted);
+  }
+  .preset.on { border-color:var(--accent); background:#0d2b23; }
+  .preset.on .pname { color:var(--accent); }
+  .preset.on .pname::after { content:" ●"; font-size:9px; vertical-align:middle; }
+  .preset.edited { border-color:var(--warn); background:#2a2113; }
+  .preset.edited .pname { color:var(--warn); }
+  .preset.edited .pnote { color:var(--warn); opacity:.8; }
+  #shows button.on { border-color:var(--accent); color:var(--accent); }
 </style>
 </head>
 <body>

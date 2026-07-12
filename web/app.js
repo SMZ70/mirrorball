@@ -46,6 +46,7 @@ let ws = null;
 let dragging = false;  // a slider is under a finger right now
 let wantShow = false;  // we asked for a show (a load); take the next one
 let drawn = "";        // what the track list currently displays
+let loaded = null;     // {name, key} of the show as it arrived, before edits
 
 const $ = (id) => document.getElementById(id);
 
@@ -63,6 +64,7 @@ function connect() {
     if (!show || wantShow) {
       show = msg.show;              // first sight of it, or we asked for it
       wantShow = false;
+      loaded = { name: show.name, key: showKey() };   // the unedited original
       drawn = "";                   // force a rebuild
     } else if (typeof msg.bpm === "number") {
       show.bpm = msg.bpm;           // tap tempo is measured by the server's clock
@@ -115,7 +117,12 @@ function toggleBlackout() {
 
 function saveShow() {
   const name = $("name").value.trim() || show.name;
-  send({ type: "save", name });
+  show.name = name;
+  send({ type: "show", show });        // save what is on screen, not what the
+  send({ type: "save", name });        // server last heard about
+  loaded = { name, key: showKey() };   // this is the new "unedited"
+  $("name").value = "";
+  render();
 }
 
 // Loading is the one time we DO want the server's show: it built it (a preset)
@@ -258,6 +265,33 @@ function trackHtml(t) {
 
 const rateLabel = (v) => (RATES.find((r) => r.v === v) || { label: v }).label;
 
+// What the show currently *is*, as a string. Doubles as the "has the user
+// touched this since it loaded?" test and as the redraw check.
+const showKey = () => JSON.stringify(show.tracks) + `|${Math.round(show.bpm)}`;
+
+const edited = () => !!loaded && showKey() !== loaded.key;
+
+function presetHtml(p) {
+  // A preset's colours, before you load it: one stop per voice.
+  const stops = p.hues.flatMap(([a, b]) => [hsl(a), hsl(b)]);
+  const strip = stops.length > 1
+    ? `linear-gradient(90deg, ${stops.join(",")})`
+    : stops[0];
+
+  const on = loaded?.name === p.name;
+  const cls = ["preset", on ? "on" : "", on && edited() ? "edited" : ""].join(" ");
+
+  return `
+    <button class="${cls}" onclick="loadPreset('${p.name}')">
+      <span class="strip" style="background:${strip}"></span>
+      <span class="prow">
+        <span class="pname">${p.name}</span>
+        <span class="pbpm">${Math.round(p.bpm)}</span>
+      </span>
+      <span class="pnote">${on && edited() ? "edited — tap to reset" : p.note}</span>
+    </button>`;
+}
+
 function render() {
   if (!state || !show) return;
 
@@ -271,21 +305,20 @@ function render() {
   const onBeat = state.playing && (state.beat % 1) < 0.18;
   $("beat").classList.toggle("on", onBeat);
 
-  $("presets").innerHTML = (state.presets || [])
-    .map((n) => `<button class="${show.name === n ? "on" : ""}"
-                         onclick="loadPreset('${n}')">${n}</button>`).join("");
-
-  $("shows").innerHTML = (state.shows || [])
-    .map((n) => `<button onclick="loadShow('${n}')">${n}</button>`).join("")
-    || `<span class="hint">nothing saved yet — tweak a preset, name it, hit Save</span>`;
-
   // The expensive half. Rebuild only if what we would draw has actually changed
   // -- and never mid-drag, which would tear the slider out from under the
   // finger holding it.
   if (dragging) return;
-  const key = JSON.stringify(show.tracks) + `|${open}`;
+  const key = [showKey(), open, loaded?.name, edited(), (state.shows || []).join()].join("|");
   if (key === drawn) return;
   drawn = key;
+
+  $("presets").innerHTML = (state.presets || []).map(presetHtml).join("");
+
+  $("shows").innerHTML = (state.shows || [])
+    .map((n) => `<button class="${loaded?.name === n ? "on" : ""}"
+                         onclick="loadShow('${n}')">${n}</button>`).join("")
+    || `<span class="hint">nothing saved yet — load a preset, change it, name it, Save</span>`;
 
   $("tracks").innerHTML = show.tracks.map(trackHtml).join("")
     || `<div class="track"><div class="thead"><span class="tinfo">no tracks</span></div></div>`;

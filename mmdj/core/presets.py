@@ -123,6 +123,20 @@ def names() -> list[str]:
     return list(PRESETS)
 
 
+def info() -> list[dict]:
+    """What the panel needs to draw a preset before loading it: what it is
+    called, what it sounds like, and what colours it will put in the room."""
+    return [
+        {
+            "name": name,
+            "note": preset.note,
+            "bpm": preset.bpm,
+            "hues": [list(v.hue) for v in preset.voices],
+        }
+        for name, preset in PRESETS.items()
+    ]
+
+
 def build(name: str, lights: list[Light]) -> Show:
     """Deal a preset's voices onto the lights we actually have."""
     preset = PRESETS[name]

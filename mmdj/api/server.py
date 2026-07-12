@@ -109,7 +109,7 @@ class Panel:
             "beat": round(self.clock.beat(), 3),
             "bpm": round(self.clock.bpm, 1),
             "shows": store.names(),
-            "presets": presets.names(),
+            "presets": presets.info(),
             "lights": [
                 {"id": light.id, "name": light.name, "room": light.room}
                 for light in self.streamable_lights()
@@ -223,9 +223,13 @@ async def handle(panel: Panel, msg: dict) -> None:
         case "load":
             _adopt(panel, store.load(msg["name"]))
         case "preset":
+            name = msg.get("name", "")
+            if name not in presets.PRESETS:
+                logger.warning("no such preset: {!r}", name)
+                return
             # Built fresh against the lights we have now, not loaded from disk:
             # a preset is a recipe, and the room may have changed since.
-            _adopt(panel, presets.build(msg["name"], panel.streamable_lights()))
+            _adopt(panel, presets.build(name, panel.streamable_lights()))
         case _:
             logger.debug("ignoring {}", msg)
 
