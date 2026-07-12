@@ -17,9 +17,13 @@ fi
 
 cd "$(dirname "$0")/.."
 
+# shows/ is excluded from --delete on purpose: it is the user's saved work, it
+# lives only on the host, and a laptop that has never saved a show would
+# otherwise delete every one of them.
 rsync -az --delete \
     --exclude '.venv/' --exclude '.git/' --exclude '.pytest_cache/' \
     --exclude '.ruff_cache/' --exclude '__pycache__/' \
+    --exclude 'shows/' --exclude 'node_modules/' \
     ./ "$HOST:~/$DIR/"
 
 ssh "$HOST" "mkdir -p ~/$DIR/shows && cd ~/$DIR && docker compose up -d --build"
