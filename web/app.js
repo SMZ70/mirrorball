@@ -27,6 +27,43 @@ const RATES  = [
   { label: "1/8", v: 0.125 },
 ];
 
+const BPM_MIN = 40, BPM_MAX = 220;      // the server rejects anything outside
+
+// What each control is FOR. Shown in place when help is on -- a phone has no
+// hover, so there is nowhere to put a tooltip. Written to answer "why would I
+// touch this?", not to restate the label.
+const HELP = {
+  shape: "What the light does each cycle. <b>pulse</b> swells and falls · "
+       + "<b>strobe</b> snaps on and off · <b>chase</b> hits then decays · "
+       + "<b>sparkle</b> fires at random moments · <b>breathe</b> drifts slowly · "
+       + "<b>sweep</b> travels through the colours · <b>solid</b> just holds.",
+  rate:  "How long one cycle lasts, <b>in beats</b>. <b>1</b> = once a beat. "
+       + "<b>1/4</b> = four times a beat (fast). <b>4</b> = once every four beats "
+       + "(slow). Beats rather than seconds, so it stays locked to the music when "
+       + "you change the tempo.",
+  curve: "The shape of the swell. <b>sine</b> is smooth · <b>fall</b> snaps up then "
+       + "decays, which reads as a <i>hit</i> · <b>ramp</b> rises then drops · "
+       + "<b>square</b> is hard on/off · <b>ease</b> is soft at both ends.",
+  mode:  "How the colour moves inside the range below. <b>hold</b> = one colour · "
+       + "<b>cycle</b> = walk the range each cycle · <b>random</b> = a new colour "
+       + "from the range every cycle.",
+  hue:   "The colours this light is allowed to use. Set both ends the same for a "
+       + "single fixed colour; set 0 → 360 for the whole spectrum.",
+  phase: "Where in the cycle this light starts. Offsetting the lights against each "
+       + "other is what makes a chase <i>travel</i> around the room instead of every "
+       + "light firing at once.",
+  duty:  "How much of the cycle is <b>on</b>. Low = short stabs with dark between. "
+       + "High = long holds. This is where a strobe stops being a strobe.",
+  bri:   "The brightness range. Raise <b>min</b> above 0 to keep the light alive "
+       + "between hits; drop <b>max</b> to make it sit back. A wide gap = high "
+       + "contrast, which is what makes a room feel like it is moving.",
+  level: "This light's fader — scales everything it does, like a channel on a "
+       + "mixer. Pull it down to keep a light in the mix but out of the way.",
+  solo:  "<b>SOLO</b> plays only the soloed lights and silences the rest — good for "
+       + "hearing what one light is actually doing. <b>MUTE</b> silences this one. "
+       + "Solo beats mute.",
+};
+
 // How each slider's value reads. Used for the markup AND for the live update
 // during a drag, so the two cannot drift apart.
 const FMT = {
@@ -47,6 +84,8 @@ let dragging = false;  // a slider is under a finger right now
 let wantShow = false;  // we asked for a show (a load); take the next one
 let drawn = "";        // what the track list currently displays
 let loaded = null;     // {name, key} of the show as it arrived, before edits
+let tapping = false;   // we asked the server to measure a tap; take its answer
+let helpOn = localStorage.getItem("mmdj.help") === "1";
 
 const $ = (id) => document.getElementById(id);
 
@@ -66,8 +105,14 @@ function connect() {
       wantShow = false;
       loaded = { name: show.name, key: showKey() };   // the unedited original
       drawn = "";                   // force a rebuild
-    } else if (typeof msg.bpm === "number") {
-      show.bpm = msg.bpm;           // tap tempo is measured by the server's clock
+    } else if (tapping && typeof msg.bpm === "number") {
+      // The ONE case where the server knows the tempo better than we do: it
+      // measured the taps. Any other time, taking its bpm would undo the number
+      // the user is in the middle of typing -- which is exactly how the sliders
+      // used to fight back.
+      tapping = false;
+      show.bpm = msg.bpm;
+      push();
     }
 
     render();
@@ -108,6 +153,50 @@ function err(msg) {
 // ── Actions ───────────────────────────────────────────────────────────────
 
 const togglePlay = () => send({ type: "play", on: !state?.playing });
+
+// ── Tempo ─────────────────────────────────────────────────────────────────
+
+function setBpm(value) {
+  const bpm = Math.min(BPM_MAX, Math.max(BPM_MIN, Math.round(value || 0)));
+  show.bpm = bpm;
+  $("bpm").value = bpm;              // snap the field back if it was out of range
+  push();
+  render();
+}
+
+const nudgeBpm = (by) => setBpm(show.bpm + by);
+
+function tap() {
+  tapping = true;                    // the next bpm the server sends is the answer
+  send({ type: "tap" });
+}
+
+function toggleHelp() {
+  helpOn = !helpOn;
+  localStorage.setItem("mmdj.help", helpOn ? "1" : "0");
+  drawn = "";                        // the help lines live inside the track list
+  render();
+}
+
+const help = (key) => (helpOn ? `<div class="help">${HELP[key]}</div>` : "");
+
+// The transport, explained. These are the buttons you press in the dark, so the
+// distinction that actually matters is BLACK vs ■ -- one hides the show, the
+// other gives the lights back.
+const GUIDE = `
+  <div><span class="k">BPM</span> the tempo everything is locked to. Type it, or
+       nudge with − / +.</div>
+  <div><span class="k">TAP</span> no idea what the tempo is? Tap four times in
+       time with the music and it works it out.</div>
+  <div><span class="k">↻</span> the show has drifted off the music — snap it back
+       onto the downbeat.</div>
+  <div><span class="k">BLACK</span> <b>hides</b> the show: every light to zero,
+       but it keeps running underneath, still on the beat. Press again and you
+       come back <i>in time</i>, not from the top.</div>
+  <div><span class="k">▶ ■</span> ■ <b>stops</b> the show and hands the lights back
+       to Hue — so the app, the bot and the party routine can drive them again.</div>
+  <div><span class="k">tracks</span> tap a light to open it. Everything you change
+       applies <b>live</b>, while it plays.</div>`;
 
 function toggleBlackout() {
   show.blackout = !show.blackout;      // ours to change; the server follows
@@ -217,21 +306,25 @@ function trackHtml(t) {
         ${SHAPES.map((s) => `<div class="seg ${t.shape === s ? "sel" : ""}"
            onclick="setTrack('${t.id}',{shape:'${s}'})">${s}</div>`).join("")}
       </div></div>
+      ${help("shape")}
 
       <div class="row"><label>rate</label><div class="segs">
         ${RATES.map((r) => `<div class="seg ${t.rate === r.v ? "sel" : ""}"
            onclick="setTrack('${t.id}',{rate:${r.v}})">${r.label}</div>`).join("")}
       </div></div>
+      ${help("rate")}
 
       <div class="row"><label>curve</label><div class="segs">
         ${CURVES.map((c) => `<div class="seg ${t.curve === c ? "sel" : ""}"
            onclick="setTrack('${t.id}',{curve:'${c}'})">${c}</div>`).join("")}
       </div></div>
+      ${help("curve")}
 
       <div class="row"><label>colour</label><div class="segs">
         ${MODES.map((m) => `<div class="seg ${p.mode === m ? "sel" : ""}"
            onclick="setPal('${t.id}',{mode:'${m}'})">${m}</div>`).join("")}
       </div></div>
+      ${help("mode")}
 
       <div class="row"><label>hue</label>
         ${slider(t, "hue_from", 'class="hue" min="0" max="360"', true)}
@@ -239,26 +332,36 @@ function trackHtml(t) {
       <div class="row"><label>…to</label>
         ${slider(t, "hue_to", 'class="hue" min="0" max="360"', true)}
       </div>
+      ${help("hue")}
+
       <div class="row"><label>phase</label>
         ${slider(t, "phase", 'min="0" max="0.99" step="0.01"')}
       </div>
+      ${help("phase")}
+
       <div class="row"><label>duty</label>
         ${slider(t, "duty", 'min="0.05" max="1" step="0.05"')}
       </div>
+      ${help("duty")}
+
       <div class="row"><label>min</label>
         ${slider(t, "bri_min", 'min="0" max="100"')}
       </div>
       <div class="row"><label>max</label>
         ${slider(t, "bri_max", 'min="0" max="100"')}
       </div>
+      ${help("bri")}
+
       <div class="row"><label>level</label>
         ${slider(t, "level", 'min="0" max="1" step="0.01"')}
       </div>
+      ${help("level")}
 
       <div class="row">
         <button class="${t.solo ? "on" : ""}" onclick="setTrack('${t.id}',{solo:${!t.solo}})">SOLO</button>
         <button class="${t.mute ? "stop" : ""}" onclick="setTrack('${t.id}',{mute:${!t.mute}})">MUTE</button>
       </div>
+      ${help("solo")}
     </div>
   </div>`;
 }
@@ -295,11 +398,18 @@ function presetHtml(p) {
 function render() {
   if (!state || !show) return;
 
-  $("bpm").textContent = Math.round(show.bpm);
+  // Never type over the user. If the field has focus they are mid-number, and
+  // "14" on the way to "140" would get slapped back to 40 by the clamp.
+  const bpmField = $("bpm");
+  if (document.activeElement !== bpmField) bpmField.value = Math.round(show.bpm);
+
   $("area").textContent = state.area ? `· ${state.area}` : "";
   $("play").textContent = state.playing ? "■" : "▶";
   $("play").className = state.playing ? "stop" : "go";
   $("blackout").className = show.blackout ? "on" : "";
+  $("helpbtn").className = helpOn ? "ghost on" : "ghost";
+  $("guide").className = helpOn ? "show" : "";
+  $("guide").innerHTML = helpOn ? GUIDE : "";
 
   // Flash on the downbeat, so you can see the show is locked to the tempo
   const onBeat = state.playing && (state.beat % 1) < 0.18;

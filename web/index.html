@@ -29,8 +29,23 @@
     border-bottom:1px solid var(--line);
     display:flex; align-items:center; gap:8px; flex-wrap:wrap;
   }
-  .bpm { font-size:26px; font-weight:700; font-variant-numeric:tabular-nums; letter-spacing:-.5px; }
-  .bpm small { font-size:11px; color:var(--muted); font-weight:500; margin-left:3px; }
+  /* Tempo. Typing a number is the fastest way in; the nudges are for when you
+     are close and the room is loud. TAP is for when you have no idea. */
+  .tempo { display:flex; align-items:center; gap:2px; }
+  .tempo input {
+    width:62px; padding:4px 0; text-align:center; background:transparent;
+    border:none; border-bottom:1px dashed var(--line); color:var(--text);
+    font:700 26px/1 ui-sans-serif,system-ui,sans-serif; letter-spacing:-.5px;
+    font-variant-numeric:tabular-nums; -moz-appearance:textfield;
+  }
+  .tempo input:focus { outline:none; border-bottom-color:var(--accent); color:var(--accent); }
+  .tempo input::-webkit-outer-spin-button,
+  .tempo input::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
+  .tempo small { font-size:10px; color:var(--muted); font-weight:600; margin-left:4px; }
+  .nudge {
+    padding:0; width:28px; height:28px; border-radius:8px; font-size:17px;
+    line-height:1; color:var(--muted); background:var(--panel2);
+  }
   .beat {
     width:12px; height:12px; border-radius:50%; background:var(--line); flex:none;
     transition:background .05s, box-shadow .05s;
@@ -112,6 +127,28 @@
   #err.show { display:block; }
   .hint { font-size:12px; color:var(--muted); }
 
+  /* ── Help ───────────────────────────────────────────────────────────────
+     A phone has no hover, so there is nowhere to hide a tooltip. Help is a
+     mode instead: press ?, and every control explains itself in place. Off by
+     default and remembered, so it teaches once rather than nagging forever. */
+  #helpbtn.on { background:var(--accent); color:#00291c; border-color:transparent; }
+  .help {
+    font-size:11px; line-height:1.45; color:var(--muted);
+    margin:-3px 0 9px; padding-left:2px;
+  }
+  .help b { color:var(--text); font-weight:600; }
+  #guide {
+    display:none; margin-bottom:12px; padding:11px 13px; border-radius:12px;
+    background:var(--panel); border:1px solid var(--line);
+    font-size:12px; line-height:1.6; color:var(--muted);
+  }
+  #guide.show { display:block; }
+  #guide b { color:var(--text); }
+  #guide .k {
+    display:inline-block; min-width:46px; margin-right:6px; color:var(--accent);
+    font-weight:700;
+  }
+
   /* Presets. A card has to answer "what is this?" before you tap it: a name,
      the tempo, a word about the feel, and the colours it will put in the room. */
   #presets { grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); }
@@ -145,15 +182,26 @@
 
 <div class="transport">
   <span class="beat" id="beat"></span>
-  <span class="bpm"><span id="bpm">120</span><small>BPM</small></span>
-  <button onclick="send({type:'tap'})">TAP</button>
-  <button class="ghost" onclick="send({type:'resync'})">↻</button>
+
+  <span class="tempo">
+    <button class="nudge" onclick="nudgeBpm(-1)" aria-label="slower">−</button>
+    <input id="bpm" type="number" min="40" max="220" step="1"
+           inputmode="numeric" enterkeyhint="done"
+           onchange="setBpm(+this.value)" onfocus="this.select()">
+    <button class="nudge" onclick="nudgeBpm(1)" aria-label="faster">+</button>
+    <small>BPM</small>
+  </span>
+
+  <button onclick="tap()">TAP</button>
+  <button class="ghost" onclick="send({type:'resync'})" title="resync">↻</button>
   <span class="spacer"></span>
+  <button id="helpbtn" class="ghost" onclick="toggleHelp()">?</button>
   <button id="blackout" onclick="toggleBlackout()">BLACK</button>
   <button id="play" class="go" onclick="togglePlay()">▶</button>
 </div>
 
 <div id="err"></div>
+<div id="guide"></div>
 
 <h2>Presets</h2>
 <div class="grid" id="presets"></div>
