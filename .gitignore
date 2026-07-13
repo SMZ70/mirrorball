@@ -11,3 +11,7 @@ bridge.json.old
 
 # UI test deps (installed on demand by scripts/test-ui.sh)
 tests/ui/node_modules/
+
+# screenshot capture (scripts/shots)
+scripts/shots/node_modules/
+scripts/shots/frames/

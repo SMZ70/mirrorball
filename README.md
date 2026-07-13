@@ -10,6 +10,15 @@ dealt onto whatever lights the room happens to have.
 It is a sequencer, not a soundboard. You set the lights up once, save the show,
 and recall it. See [DESIGN.md](DESIGN.md) for why it is built this way.
 
+<p align="center">
+  <img src="docs/panel.gif" width="380" alt="The panel: loading presets, opening a light, nudging the tempo">
+</p>
+
+Loading `rave` (every light in one track, in unison), then `call` (the room split
+in two, the halves answering each other), then opening a light and pushing the
+tempo — note the preset card going amber the moment the show stops being the
+preset.
+
 ## Why the Entertainment API
 
 The Hue REST API accepts roughly **ten commands a second, shared across every
@@ -50,7 +59,22 @@ you already have almost certainly cannot stream — you need a fresh one.
 | `MIRRORBALL_PASSWORD` | *(none)* | HTTP basic password. Unset means anyone on the LAN can drive the lights. |
 | `MIRRORBALL_OPENING` | `party` | the preset the panel opens on |
 
+### No bridge? Run the demo
+
+```bash
+uv run python scripts/demo_panel.py     # fake lights, a driver that goes nowhere
+```
+
+The whole panel, the whole engine, no hardware — on http://localhost:8091. It is
+also what the screenshots here are taken against, so nobody's real light names
+end up in the repo.
+
 ## The panel
+
+| | | |
+|---|---|---|
+| ![presets](docs/presets.png) | ![the editor](docs/editor.png) | ![inline help](docs/help.png) |
+| Presets, with the colours they will actually put in the room | A light's editor: shape, rate, colour range, and the lights it drives | **?** turns on inline help — every control explains itself, in place |
 
 - **▶ / ■** — play, and hand the lights back to the bridge
 - **TAP** — tap four times in time with the music; everything locks to that tempo
