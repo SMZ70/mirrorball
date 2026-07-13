@@ -636,7 +636,10 @@ function render() {
   $("pg").className = mode === "pg" ? "on" : "";
   $("stage").className = mode === "pg" ? "show" : "";
   $("rig").className = mode === "pg" ? "show" : "";
-  if (mode === "pg") paintRig();
+  // Draw the rig the moment you open the playground, dark and waiting -- not
+  // only once frames start arriving. An empty box before you press ▶ looks
+  // exactly like a feature that did not work.
+  if (mode === "pg") { paintRig(); paintStage(); }
   $("play").textContent = isPlaying() ? "■" : "▶";
   $("play").className = isPlaying() ? "stop" : "go";
   $("blackout").className = show.blackout ? "on" : "";

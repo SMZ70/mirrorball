@@ -40,6 +40,10 @@ export default async function (t) {
   await sleep(30);
 
   t.check("the stage appears", p.$("#stage").className, "show");
+  // Before ▶ there are no frames yet. The lamps must still be THERE, dark and
+  // waiting -- an empty box reads as "the playground did not work".
+  t.check("the rig is drawn before you press play",
+    p.window.document.querySelectorAll("#stage .bulb").length, 2);
   t.check("and the panel says it is sandboxed",
     p.window.document.body.className.includes("pg"), true);
 
