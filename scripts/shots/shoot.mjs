@@ -64,8 +64,6 @@ const showEditor = async () => {
 };
 
 // ── Stills ──────────────────────────────────────────────────────────────────
-await page.screenshot({ path: path.join(DOCS, "panel.png") });
-
 await clickText("#presets button", "fire");
 await page.screenshot({ path: path.join(DOCS, "presets.png") });
 
