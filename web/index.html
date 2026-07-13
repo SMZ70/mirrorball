@@ -193,9 +193,71 @@
   .preset.edited .pname { color:var(--warn); }
   .preset.edited .pnote { color:var(--warn); opacity:.8; }
   #shows button.on { border-color:var(--accent); color:var(--accent); }
+
+  /* ── Playground ──────────────────────────────────────────────────────────
+     Everything here is additive and hidden unless the playground is open, so
+     the live panel looks and behaves exactly as it did. */
+  .modes { display:flex; gap:6px; margin-bottom:10px; }
+  .modes button {
+    flex:1; padding:8px; font-size:11px; letter-spacing:.08em; text-transform:uppercase;
+  }
+  .modes button.on { border-color:var(--accent); color:var(--accent); background:#0d2b23; }
+  #pg.on { border-color:#c07ae8; color:#c07ae8; background:#1e1130; }
+
+  /* An unmissable reminder that nothing here reaches the room. */
+  body.pg .transport { border-color:#4a2d63; }
+  #pgnote { display:none; font-size:11px; color:#c9a6e6; margin-bottom:10px; }
+  body.pg #pgnote { display:block; }
+
+  #stage, #rig { display:none; }
+  #stage.show, #rig.show { display:flex; }
+
+  #stage {
+    flex-wrap:wrap; gap:10px; justify-content:center;
+    padding:16px 10px; margin-bottom:10px;
+    background:#07080b; border:1px solid var(--line); border-radius:14px;
+  }
+  .bulb { width:64px; text-align:center; }
+  .bulb .glow {
+    width:44px; height:44px; margin:0 auto 5px; border-radius:50%;
+    background:#14161c; transition:background 40ms linear;
+  }
+  .bulb span {
+    display:block; font-size:9px; color:var(--muted);
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+
+  #rig { align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+  #rig label { font-size:11px; color:var(--muted); }
+  #rig-count { display:flex; align-items:center; gap:8px; flex:1; min-width:160px; }
+  #rig-n { flex:1; }
 </style>
 </head>
 <body>
+
+<div class="modes">
+  <button id="live" class="on" onclick="setMode('live')">Live · your room</button>
+  <button id="pg" onclick="setMode('pg')">Playground</button>
+</div>
+
+<div id="pgnote">
+  Sandbox. The server renders this show with the same engine that drives the
+  lights, but sends the frames here instead of to the bridge — <b>nothing in the
+  playground can touch your room</b>. Your live show is kept exactly as you left it.
+</div>
+
+<div id="rig">
+  <label>rig</label>
+  <button id="rig-real" onclick="setRig('real')">my lights</button>
+  <button id="rig-virtual" onclick="setRig('virtual')">virtual</button>
+  <span id="rig-count">
+    <input id="rig-n" type="range" min="1" max="24" step="1"
+           oninput="setRig('virtual', +this.value)">
+    <span id="rig-nval" class="val"></span>
+  </span>
+</div>
+
+<div id="stage"></div>
 
 <div class="transport">
   <span class="beat" id="beat"></span>
@@ -210,7 +272,7 @@
   </span>
 
   <button onclick="tap()">TAP</button>
-  <button class="ghost" onclick="send({type:'resync'})" title="resync">↻</button>
+  <button class="ghost" onclick="sendW({type:'resync'})" title="resync">↻</button>
   <span class="spacer"></span>
   <button id="helpbtn" class="ghost" onclick="toggleHelp()">?</button>
   <button id="blackout" onclick="toggleBlackout()">BLACK</button>

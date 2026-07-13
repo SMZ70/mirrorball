@@ -1,15 +1,17 @@
 /**
  * The UI suite:  ./scripts/test-ui.sh   (or: node tests/ui/run.mjs)
  *
- * Deliberately not a test framework. Four files, one assertion helper, no
+ * Deliberately not a test framework. A few files, one assertion helper, no
  * config -- the panel is 300 lines of plain JS and does not need a build step
  * to test a build step it does not have.
  */
 
 import groups from "./groups.test.mjs";
 import help from "./help.test.mjs";
+import playground from "./playground.test.mjs";
 import presets from "./presets.test.mjs";
 import sliders from "./sliders.test.mjs";
+import solo from "./solo.test.mjs";
 import tempo from "./tempo.test.mjs";
 
 const SUITES = [
@@ -18,6 +20,8 @@ const SUITES = [
   ["presets — the cards must not lie about what is loaded", presets],
   ["groups  — one light, one track; a follower has no pattern", groups],
   ["help    — every setting explains itself", help],
+  ["solo    — a control that silences the room cannot be invisible", solo],
+  ["playgnd — the sandbox must never reach the lights", playground],
 ];
 
 const GREEN = "\x1b[32m", RED = "\x1b[31m", DIM = "\x1b[2m", OFF = "\x1b[0m";

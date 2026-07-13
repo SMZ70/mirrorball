@@ -67,7 +67,13 @@ uv run python scripts/demo_panel.py     # fake lights, a driver that goes nowher
 
 The whole panel, the whole engine, no hardware — on http://localhost:8091. It is
 also what the screenshots here are taken against, so nobody's real light names
-end up in the repo.
+end up in the repo:
+
+```bash
+cd scripts/shots && npm install
+node shoot.mjs         # the panel: stills + gif
+node playground.mjs    # the playground: still + gif
+```
 
 ## The panel
 
@@ -85,6 +91,54 @@ end up in the repo.
 - tap any light to set its **shape, rate, colour range, phase** — live, while it plays
 - **Presets** — tap a card to load it
 - **My shows** — tap a saved show to load it; **Save** names the current one
+
+## The playground
+
+A sandbox that drives **nothing**. The server renders the show with the same
+engine that runs your lights, and sends the frames to the screen instead of the
+bridge — so you can build, break and rebuild a show without a single bulb moving.
+
+<p align="center">
+  <img src="docs/playground.gif" width="380" alt="The playground: a wave on the real lights, then a virtual rig growing to 24 lamps">
+</p>
+
+<p align="center">
+  <img src="docs/playground.png" width="330" alt="The playground stage, previewing a wave across six simulated lights">
+</p>
+
+Pick a **rig**:
+
+- **my lights** — mirrors your real room, *same light ids*. A show you build here
+  is one you can genuinely play later, so this is a rehearsal room.
+- **virtual** — invents up to 24 lamps. Design for a room you do not own, or watch
+  what a chase actually does with more lights than you have.
+
+Everything else is the panel you already know: the same presets, the same track
+editor, the same tempo. Only the output changes.
+
+### How it is kept away from your lights
+
+The panel drives real lights in someone's home, and that must keep working. So
+the isolation is **structural**, not a matter of being careful:
+
+- The playground has **no driver**. It never constructs one, so there is nowhere
+  for a frame to go — it cannot open the DTLS socket or claim the entertainment
+  area even if the code above it is wrong.
+- It owns a **separate Show, clock and rig**. Nothing it does can reach the live
+  show or the engine, and switching modes leaves each side exactly as you left it.
+- Its messages live in their own **`pg.*` namespace**, handled by a function that
+  is never given the live show. One choke point in the panel decides the
+  namespace, so a sandbox edit cannot address the room by accident.
+- A **virtual show cannot be saved**. It names lights that do not exist, so saving
+  it would hand you a show that loads fine and then lights nothing. It is refused
+  at the door.
+
+What it *does* share is `render_show` — the preview is produced by the exact code
+that drives the bridge. A second renderer written in JavaScript would look right
+and then quietly drift.
+
+The tests pin the isolation rather than the features: break the panel's choke
+point and `NOTHING addresses the live show from the playground` fails immediately.
 
 ## Groups and links
 
@@ -224,6 +278,17 @@ was overwritten by the server's clock). So the fixtures deliberately echo a
 The panel owns the Show. The server's copy is adopted exactly twice: at connect,
 and when the panel asks for one (a load). Plus the bpm, but only right after a
 TAP — because there the server did the measuring.
+
+Two suites are there to pin things that are *invisible* when they break, which is
+the worst kind of bug in a light show:
+
+- **solo** — a solo silences every other track. It used to be *saved into shows*,
+  so a show recalled a week later came back with one track soloed and the rest
+  dark. It looked exactly like "grouping broke my show". Solo is monitoring state
+  now: stripped on save, stripped on load, and impossible to miss while it is on.
+- **playground** — the sandbox must never reach the lights. The test asserts that
+  in playground mode *nothing* addresses the live show, and it fails the moment
+  the panel's namespace choke point is broken.
 
 ## Licence
 

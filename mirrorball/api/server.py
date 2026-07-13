@@ -13,8 +13,16 @@ WebSocket in, from the panel:
     {"type": "save",     "name": "..."}
     {"type": "load",     "name": "..."}
 
+The playground has its own namespace, and its own handler:
+    {"type": "pg.show" | "pg.play" | "pg.rig" | "pg.preset" | "pg.save" | ...}
+
+That is not decoration. The playground must never be able to touch the live show
+or the lights, and a separate namespace makes that a property of the wiring
+rather than of everyone remembering to be careful.
+
 WebSocket out, to the panel:
-    {"type": "state", "show": {...}, "playing": true, "beat": 12.5, "shows": [...]}
+    {"type": "state",   "show": {...}, "playing": true, "beat": 12.5, "pg": {...}}
+    {"type": "preview", "beat": 3.2, "frames": {"<light id>": {hue, sat, bri}}}
 
 Sending the whole Show rather than a patch is a deliberate simplification: it is
 small, it cannot desync, and there is no merge logic to get subtly wrong. If it
@@ -32,6 +40,7 @@ from fastapi.responses import FileResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from loguru import logger
 
+from mirrorball.api.playground import PREVIEW_HZ, Playground
 from mirrorball.bridge import Area, Credentials, Light, discover
 from mirrorball.core import presets, store
 from mirrorball.core.clock import Clock
@@ -55,6 +64,8 @@ class Panel:
         self.areas: list[Area] = []
         self.area_index = 0
         self._clients: set[WebSocket] = set()
+        # A sandbox with no driver. It cannot reach the engine or the bridge.
+        self.playground = Playground()
 
     # ── Bridge ───────────────────────────────────────────────────────────────
 
@@ -116,6 +127,7 @@ class Panel:
                 for light in self.streamable_lights()
             ],
             "area": self.areas[self.area_index].name if self.areas else "",
+            "pg": self.playground.state(self.streamable_lights()),
         }
 
     def streamable_lights(self) -> list[Light]:
@@ -124,13 +136,15 @@ class Panel:
         return self.areas[self.area_index].lights if self.areas else []
 
     async def broadcast(self) -> None:
+        await self.send_all(self.state())
+
+    async def send_all(self, payload: dict) -> None:
         if not self._clients:
             return
-        state = self.state()
         dead = set()
         for ws in self._clients:
             try:
-                await ws.send_json(state)
+                await ws.send_json(payload)
             except Exception:
                 dead.add(ws)
         self._clients -= dead
@@ -165,6 +179,7 @@ def create_app(panel: Panel) -> FastAPI:
     async def _startup() -> None:
         await panel.connect_bridge()
         pump.append(asyncio.create_task(_pump()))
+        pump.append(asyncio.create_task(_preview_pump()))
 
     @app.on_event("shutdown")
     async def _shutdown() -> None:
@@ -180,6 +195,19 @@ def create_app(panel: Panel) -> FastAPI:
         while True:
             await panel.broadcast()
             await asyncio.sleep(1 / BROADCAST_HZ)
+
+    async def _preview_pump() -> None:
+        """Frames for the playground stage, and nothing else.
+
+        Its own loop, faster than the state pump: the whole Show is a few kB and
+        does not need to go out 25 times a second, but a strobe does. It sends
+        nothing at all unless someone is actually looking at the playground.
+        """
+        while True:
+            pg = panel.playground
+            if pg.running and panel._clients:
+                await panel.send_all(pg.preview())
+            await asyncio.sleep(1 / PREVIEW_HZ)
 
     @app.websocket("/ws")
     async def socket(ws: WebSocket) -> None:
@@ -201,8 +229,51 @@ def create_app(panel: Panel) -> FastAPI:
     return app
 
 
-async def handle(panel: Panel, msg: dict) -> None:
+async def handle_playground(pg: Playground, lights: list[Light], msg: dict) -> None:
+    """Playground messages. Note what this function is NOT given: the live show,
+    the engine, or a driver. It could not disturb the room if it tried."""
     match msg.get("type"):
+        case "pg.show":
+            pg.show = Show.model_validate(msg["show"])
+            pg.clock.set_bpm(pg.show.bpm)
+        case "pg.play":
+            pg.running = bool(msg.get("on"))
+        case "pg.tap":
+            bpm = pg.clock.tap()
+            if bpm:
+                pg.show.bpm = round(bpm, 1)
+        case "pg.resync":
+            pg.clock.resync()
+        case "pg.blackout":
+            pg.show.blackout = bool(msg.get("on"))
+        case "pg.rig":
+            pg.set_rig(msg.get("rig", "real"), msg.get("count", pg.count), lights)
+        case "pg.preset":
+            name = msg.get("name", "")
+            if name in presets.PRESETS:
+                pg.adopt(presets.build(name, pg.lights(lights)))
+        case "pg.load":
+            pg.adopt(store.load(msg["name"]))
+        case "pg.save":
+            # A virtual show names lights that do not exist. Saving it into the
+            # same drawer as real shows would hand you a show that loads fine and
+            # then lights nothing -- so it is refused at the door.
+            if pg.rig != "real":
+                logger.warning("refusing to save a virtual-rig show")
+                return
+            pg.show.name = msg.get("name") or pg.show.name
+            store.save(pg.show)
+        case _:
+            logger.debug("ignoring playground {}", msg)
+
+
+async def handle(panel: Panel, msg: dict) -> None:
+    kind = msg.get("type", "")
+    if isinstance(kind, str) and kind.startswith("pg."):
+        await handle_playground(panel.playground, panel.streamable_lights(), msg)
+        return
+
+    match kind:
         case "show":
             panel.show = Show.model_validate(msg["show"])
             panel.clock.set_bpm(panel.show.bpm)

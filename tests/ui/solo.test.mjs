@@ -1,35 +1,34 @@
 /**
  * A solo silences every other track. That is correct -- and it was invisible,
  * because the S badge lives inside one collapsed track row. A solo latched on a
- * track you are not looking at reads as "my other groups stopped playing".
+ * track you were not looking at read as "my other groups stopped playing", and
+ * it was being SAVED into shows, so it came back days later.
  */
-import assert from "node:assert/strict";
-import { boot, state, show, track, sleep } from "./harness.mjs";
+import { boot, show, sleep, state, track } from "./harness.mjs";
 
-const p = await boot();
+export default async function (t) {
+  const p = await boot();
 
-// A show recalled with a solo latched on the LAST track -- exactly the shape of
-// the saved shows that caused this.
-p.feed(state({ show: show({ tracks: [track(0), track(1, { solo: true })] }) }));
-await sleep(30);
+  // A show recalled with a solo latched on the last track -- the exact shape of
+  // the saved shows that caused this.
+  p.feed(state({ show: show({ tracks: [track(0), track(1, { solo: true })] }) }));
+  await sleep(30);
 
-const banner = p.$("#soloing");
-assert.ok(banner.className.includes("on"), "the banner must show when a track is soloed");
-assert.match(banner.textContent, /SOLO/, "it must say what is happening");
-assert.match(banner.textContent, /silenced/, "and that the other lights are silenced");
+  const banner = p.$("#soloing");
+  t.check("a soloed track raises the banner", banner.className, "on");
+  t.check("it says a solo is in force", /SOLO/.test(banner.textContent), true);
+  t.check("and that the rest are silenced", /silenced/.test(banner.textContent), true);
 
-// One tap gets you out.
-p.run("clearSolo()");
-await sleep(100);
+  p.run("clearSolo()");
+  await sleep(100);
 
-assert.equal(p.$("#soloing").className, "", "the banner clears");
-const sent = p.lastSent("show").show;
-assert.deepEqual(sent.tracks.map((t) => t.solo), [false, false], "and the solo is pushed off");
+  t.check("one tap clears it", p.$("#soloing").className, "");
+  t.check("and the solo is pushed off",
+    p.lastSent("show").show.tracks.map((x) => x.solo), [false, false]);
 
-// No solo, no banner.
-p.feed(state({ show: show({ tracks: [track(0), track(1)] }) }));
-await sleep(30);
-assert.equal(p.$("#soloing").className, "", "no banner when nothing is soloed");
+  p.feed(state({ show: show({ tracks: [track(0), track(1)] }) }));
+  await sleep(30);
+  t.check("no banner when nothing is soloed", p.$("#soloing").className, "");
 
-console.log("solo banner: 6 checks passed");
-p.close();
+  p.close();
+}

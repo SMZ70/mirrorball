@@ -107,6 +107,15 @@ const SCALES = [
 
 let state = null;      // last state from the server
 let show = null;       // the Show we are editing -- ours, not the server's
+
+// LIVE drives the room. PLAYGROUND drives nothing at all: the server renders the
+// same show with the same engine and sends back frames to draw on screen, but it
+// never opens a driver. The two keep SEPARATE shows -- switching modes must not
+// smuggle a sandbox experiment into the lights, and coming back must not have
+// lost what you were doing.
+let mode = "live";
+const kept = { live: null, pg: null };
+let frames = {};       // the playground stage, as last rendered by the server
 let open = null;       // which track is expanded
 let ws = null;
 let dragging = false;  // a slider is under a finger right now
@@ -126,21 +135,28 @@ function connect() {
 
   ws.onmessage = (e) => {
     const msg = JSON.parse(e.data);
+
+    // The playground stage. Rendered by the engine's own code, so what is drawn
+    // here is what the room would actually do.
+    if (msg.type === "preview") {
+      if (mode === "pg") { frames = msg.frames; paintStage(); }
+      return;
+    }
     if (msg.type !== "state") return;
     state = msg;
 
     if (!show || wantShow) {
-      show = msg.show;              // first sight of it, or we asked for it
+      show = (mode === "pg" ? msg.pg?.show : msg.show);   // ours, or asked for
       wantShow = false;
       loaded = { name: show.name, key: showKey() };   // the unedited original
       drawn = "";                   // force a rebuild
-    } else if (tapping && typeof msg.bpm === "number") {
+    } else if (tapping && typeof (mode === "pg" ? msg.pg?.bpm : msg.bpm) === "number") {
       // The ONE case where the server knows the tempo better than we do: it
       // measured the taps. Any other time, taking its bpm would undo the number
       // the user is in the middle of typing -- which is exactly how the sliders
       // used to fight back.
       tapping = false;
-      show.bpm = msg.bpm;
+      show.bpm = mode === "pg" ? msg.pg.bpm : msg.bpm;
       push();
     }
 
@@ -151,7 +167,7 @@ function connect() {
     err(null);
     // We own the show. If the server restarted while we were away, its idea of
     // the show is stale -- hand it ours.
-    if (show) send({ type: "show", show });
+    if (show) sendW({ type: "show", show });
   };
 
   ws.onclose = () => {
@@ -164,12 +180,34 @@ function send(msg) {
   if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));
 }
 
+/** THE choke point. Every message the editor sends goes through here, so the
+ *  playground cannot address the live show by accident -- it is one function,
+ *  not a rule everybody has to remember. */
+const wire = (type) => (mode === "pg" ? `pg.${type}` : type);
+const sendW = (msg) => send({ ...msg, type: wire(msg.type) });
+
+/** Whichever transport we are looking at. */
+const isPlaying = () => (mode === "pg" ? !!state?.pg?.running : !!state?.playing);
+
+function setMode(next) {
+  if (next === mode) return;
+  kept[mode] = show;                 // remember where we were
+  mode = next;
+  show = kept[mode] || null;
+  if (!show) wantShow = true;        // first visit: take the server's copy
+  frames = {};
+  loaded = show ? loaded : null;
+  drawn = "";
+  document.body.classList.toggle("pg", mode === "pg");
+  render();
+}
+
 // Push the show, but not on every pixel of a drag: the engine picks the change
 // up on its next frame anyway, 20ms later.
 let pushTimer = null;
 function push() {
   clearTimeout(pushTimer);
-  pushTimer = setTimeout(() => send({ type: "show", show }), 60);
+  pushTimer = setTimeout(() => sendW({ type: "show", show }), 60);
 }
 
 function err(msg) {
@@ -181,7 +219,7 @@ function err(msg) {
 
 // ── Actions ───────────────────────────────────────────────────────────────
 
-const togglePlay = () => send({ type: "play", on: !state?.playing });
+const togglePlay = () => sendW({ type: "play", on: !isPlaying() });
 
 // ── Tempo ─────────────────────────────────────────────────────────────────
 
@@ -197,7 +235,7 @@ const nudgeBpm = (by) => setBpm(show.bpm + by);
 
 function tap() {
   tapping = true;                    // the next bpm the server sends is the answer
-  send({ type: "tap" });
+  sendW({ type: "tap" });
 }
 
 function toggleHelp() {
@@ -229,15 +267,15 @@ const GUIDE = `
 
 function toggleBlackout() {
   show.blackout = !show.blackout;      // ours to change; the server follows
-  send({ type: "blackout", on: show.blackout });
+  sendW({ type: "blackout", on: show.blackout });
   render();
 }
 
 function saveShow() {
   const name = $("name").value.trim() || show.name;
   show.name = name;
-  send({ type: "show", show });        // save what is on screen, not what the
-  send({ type: "save", name });        // server last heard about
+  sendW({ type: "show", show });       // save what is on screen, not what the
+  sendW({ type: "save", name });       // server last heard about
   loaded = { name, key: showKey() };   // this is the new "unedited"
   $("name").value = "";
   render();
@@ -247,12 +285,12 @@ function saveShow() {
 // or read it off disk (a save), so it is the authority, not us.
 function loadShow(name) {
   wantShow = true;
-  send({ type: "load", name });
+  sendW({ type: "load", name });
 }
 
 function loadPreset(name) {
   wantShow = true;
-  send({ type: "preset", name });
+  sendW({ type: "preset", name });
 }
 
 const track = (id) => show.tracks.find((t) => t.id === id);
@@ -301,6 +339,57 @@ function clearSolo() {
   for (const t of show.tracks) t.solo = false;
   push();
   render();
+}
+
+// ── The playground stage ──────────────────────────────────────────────────
+
+/** Draw the lights as they would look. Bulbs are built once and then only their
+ *  colour is touched -- rebuilding 24 nodes 25 times a second would fight the
+ *  finger on a slider, which is the bug that has bitten this panel three times. */
+function paintStage() {
+  const lights = state?.pg?.lights || [];
+  const box = $("stage");
+
+  if (box.childElementCount !== lights.length) {
+    box.innerHTML = lights.map((l) => `
+      <div class="bulb" id="b-${l.id}">
+        <div class="glow"></div><span>${l.name}</span>
+      </div>`).join("");
+  }
+
+  for (const l of lights) {
+    const node = document.getElementById(`b-${l.id}`);
+    if (!node) continue;
+    const f = frames[l.id];
+    const glow = node.firstElementChild;
+    if (!f || f.bri <= 0.5) {
+      glow.style.background = "#14161c";
+      glow.style.boxShadow = "none";
+      continue;
+    }
+    const light = 12 + (f.bri / 100) * 42;            // 0-100 bri -> HSL lightness
+    const col = `hsl(${f.hue} ${Math.round(f.sat * 100)}% ${light}%)`;
+    glow.style.background = col;
+    glow.style.boxShadow = `0 0 ${8 + f.bri / 3}px ${col}`;
+  }
+}
+
+function paintRig() {
+  const pg = state?.pg;
+  if (!pg) return;
+  $("rig-real").className = pg.rig === "real" ? "on" : "";
+  $("rig-virtual").className = pg.rig === "virtual" ? "on" : "";
+  $("rig-count").style.display = pg.rig === "virtual" ? "" : "none";
+  const n = $("rig-n");
+  if (document.activeElement !== n) n.value = pg.count;
+  $("rig-nval").textContent = `${pg.count} lamps`;
+}
+
+/** Switching rigs re-deals the show onto the lights that now exist -- otherwise
+ *  the tracks would name lights that are gone and the stage would sit dark. */
+function setRig(rig, count) {
+  wantShow = true;
+  send({ type: "pg.rig", rig, count: count ?? state?.pg?.count ?? 8 });
 }
 
 // ── Groups ────────────────────────────────────────────────────────────────
@@ -539,9 +628,17 @@ function render() {
   const bpmField = $("bpm");
   if (document.activeElement !== bpmField) bpmField.value = Math.round(show.bpm);
 
-  $("area").textContent = state.area ? `· ${state.area}` : "";
-  $("play").textContent = state.playing ? "■" : "▶";
-  $("play").className = state.playing ? "stop" : "go";
+  $("area").textContent = mode === "pg"
+    ? (state.pg?.rig === "virtual" ? `· virtual rig · ${state.pg.count} lamps` : "· your lights, simulated")
+    : (state.area ? `· ${state.area}` : "");
+
+  $("live").className = mode === "live" ? "on" : "";
+  $("pg").className = mode === "pg" ? "on" : "";
+  $("stage").className = mode === "pg" ? "show" : "";
+  $("rig").className = mode === "pg" ? "show" : "";
+  if (mode === "pg") paintRig();
+  $("play").textContent = isPlaying() ? "■" : "▶";
+  $("play").className = isPlaying() ? "stop" : "go";
   $("blackout").className = show.blackout ? "on" : "";
 
   // A solo silences everything else, which is correct and also invisible: the
@@ -559,7 +656,7 @@ function render() {
   $("guide").innerHTML = helpOn ? GUIDE : "";
 
   // Flash on the downbeat, so you can see the show is locked to the tempo
-  const onBeat = state.playing && (state.beat % 1) < 0.18;
+  const onBeat = isPlaying() && (state.beat % 1) < 0.18;
   $("beat").classList.toggle("on", onBeat);
 
   // The expensive half. Rebuild only if what we would draw has actually changed
