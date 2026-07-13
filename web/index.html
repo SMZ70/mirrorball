@@ -124,6 +124,12 @@
     display:none; margin-bottom:10px; padding:9px 12px; border-radius:10px;
     background:#2a1016; border:1px solid var(--hot); color:#ffb3c4; font-size:12px;
   }
+  #soloing {
+    display:none; margin-bottom:10px; padding:9px 12px; border-radius:10px;
+    background:#2b2408; border:1px solid #d9a520; color:#ffdd80;
+    font-size:12px; cursor:pointer;
+  }
+  #soloing.on { display:block; }
   #err.show { display:block; }
   .hint { font-size:12px; color:var(--muted); }
 
@@ -210,6 +216,10 @@
   <button id="blackout" onclick="toggleBlackout()">BLACK</button>
   <button id="play" class="go" onclick="togglePlay()">▶</button>
 </div>
+
+<!-- A solo silences every other track. That must never be invisible: a latched
+     solo you cannot see just looks like the rest of your show has died. -->
+<div id="soloing" onclick="clearSolo()"></div>
 
 <div id="err"></div>
 <div id="guide"></div>

@@ -296,6 +296,13 @@ function slideLink(el, id, field) {
   push();
 }
 
+/** Drop every solo. The way out of a solo you did not know you had. */
+function clearSolo() {
+  for (const t of show.tracks) t.solo = false;
+  push();
+  render();
+}
+
 // ── Groups ────────────────────────────────────────────────────────────────
 
 /** Move a light in or out of a track. A light belongs to exactly one track --
@@ -536,6 +543,17 @@ function render() {
   $("play").textContent = state.playing ? "■" : "▶";
   $("play").className = state.playing ? "stop" : "go";
   $("blackout").className = show.blackout ? "on" : "";
+
+  // A solo silences everything else, which is correct and also invisible: the
+  // S badge lives inside one collapsed track row, so a solo left latched on a
+  // track you are not looking at reads as "my other groups stopped working".
+  const soloed = show.tracks.filter((t) => t.solo);
+  const banner = $("soloing");
+  banner.className = soloed.length ? "on" : "";
+  banner.textContent = soloed.length
+    ? `SOLO — only ${soloed.map(trackLabel).join(", ")} ${soloed.length > 1 ? "are" : "is"} `
+      + "playing, every other light is silenced. Tap to clear."
+    : "";
   $("helpbtn").className = helpOn ? "ghost on" : "ghost";
   $("guide").className = helpOn ? "show" : "";
   $("guide").innerHTML = helpOn ? GUIDE : "";
