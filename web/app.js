@@ -347,7 +347,7 @@ function clearSolo() {
  *  colour is touched -- rebuilding 24 nodes 25 times a second would fight the
  *  finger on a slider, which is the bug that has bitten this panel three times. */
 function paintStage() {
-  const lights = state?.pg?.lights || [];
+  const lights = rigLights();
   const box = $("stage");
 
   if (box.childElementCount !== lights.length) {
@@ -451,10 +451,16 @@ const slider = (t, field, attrs, palette) => {
     <span class="val">${FMT[field](value)}</span>`;
 };
 
+/** The lights of the rig we are ON -- your room in live mode, the playground's
+ *  rig in the playground. Reading the live list in both was wrong: pick a virtual
+ *  rig and the editor still offered your real bulbs, which are not the lights the
+ *  show is being dealt onto. */
+const rigLights = () => (mode === "pg" ? state?.pg?.lights : state?.lights) || [];
+
 // The lights this track drives, by name -- that is what the user thinks of it as.
 function trackLabel(t) {
   const named = t.targets
-    .map((id) => (state.lights.find((l) => l.id === id) || {}).name)
+    .map((id) => (rigLights().find((l) => l.id === id) || {}).name)
     .filter(Boolean);
   if (!named.length) return "no lights";
   if (named.length <= 2) return named.join(" + ");
@@ -489,8 +495,8 @@ function trackHtml(t) {
     ${head}
     <div class="body">
 
-      <div class="row"><label>lights</label><div class="segs">
-        ${(state.lights || []).map((l) => `<div
+      <div class="row"><label>lights</label><div class="segs rig">
+        ${rigLights().map((l) => `<div
            class="seg ${t.targets.includes(l.id) ? "sel" : ""}"
            onclick="toggleLight('${t.id}','${l.id}')">${l.name}</div>`).join("")}
       </div></div>

@@ -7,7 +7,7 @@
  * and someone's actual living room is which message type goes on the wire. That
  * is one function, and it is worth pinning hard.
  */
-import { boot, show, sleep, state } from "./harness.mjs";
+import { boot, show, sleep, state, track } from "./harness.mjs";
 
 const pg = (over = {}) => ({
   rig: "real",
@@ -90,6 +90,31 @@ export default async function (t) {
   t.check("a lit bulb takes the frame's colour", b > g && g > r, true);
   t.check("and glows", lit.style.boxShadow !== "none" && !!lit.style.boxShadow, true);
   t.check("a light with no frame stays dark", dark.style.background, "rgb(20, 22, 28)");
+
+  // ── The editor offers the rig you are ON, not the one you are not ────────
+  // The chips read the LIVE light list in both modes, so picking a virtual rig
+  // still offered your real bulbs -- lights the show is not even dealt onto.
+  const virtualRig = () => pg({
+    rig: "virtual",
+    count: 3,
+    show: show({ tracks: [track(0, { targets: ["v0"] })] }),
+    lights: [
+      { id: "v0", name: "Lamp 1", room: "Virtual rig" },
+      { id: "v1", name: "Lamp 2", room: "Virtual rig" },
+      { id: "v2", name: "Lamp 3", room: "Virtual rig" },
+    ],
+  });
+
+  p.run("wantShow = true");                 // as setRig() does: take the new show
+  p.feed(state({ pg: virtualRig() }));
+  await sleep(30);
+  p.run("toggleOpen('t0')");
+  await sleep(30);
+
+  const chips = [...p.window.document.querySelectorAll(".track.open .segs.rig .seg")]
+    .map((e) => e.textContent.trim());
+  t.check("the editor offers the VIRTUAL lamps", chips, ["Lamp 1", "Lamp 2", "Lamp 3"]);
+  t.check("and not one real light", chips.some((c) => /Light \d/.test(c)), false);
 
   // ── The rig you are on is never in doubt ─────────────────────────────────
   p.feed(state({ pg: pg({ rig: "virtual", count: 12, savable: false }) }));
