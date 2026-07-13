@@ -299,6 +299,12 @@
   <button onclick="saveShow()">Save</button>
 </div>
 
-<script src="/app.js"></script>
+<!-- ?v is a cache buster, and it is not decoration. A browser holding a stale
+     app.js will happily serve it to a brand-new index.html without ever asking
+     the server -- which is how the Playground button came to render and then do
+     nothing when tapped. Bump this whenever app.js changes shape enough that an
+     old copy would break the new page. The server also sends no-store now, so
+     this should be the last time it is needed. -->
+<script src="/app.js?v=2"></script>
 </body>
 </html>

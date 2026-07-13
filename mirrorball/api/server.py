@@ -161,13 +161,23 @@ def create_app(panel: Panel) -> FastAPI:
             raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Wrong password",
                                 headers={"WWW-Authenticate": "Basic"})
 
+    # The page and the script must always be the ones on disk.
+    #
+    # This bit us: a deploy shipped a new index.html and the browser refetched it
+    # (it is a navigation), but reused a CACHED app.js -- so the new page called
+    # into old code. The Playground button rendered, and did nothing at all when
+    # tapped, because the function behind it did not exist yet. Nothing in the
+    # logs, nothing on screen. There is no build step here to hash filenames with,
+    # so the honest fix is to tell the browser not to keep them.
+    FRESH = {"Cache-Control": "no-store, must-revalidate"}
+
     @app.get("/")
     async def index() -> FileResponse:
-        return FileResponse(WEB / "index.html")
+        return FileResponse(WEB / "index.html", headers=FRESH)
 
     @app.get("/app.js")
     async def script() -> FileResponse:
-        return FileResponse(WEB / "app.js")
+        return FileResponse(WEB / "app.js", headers=FRESH)
 
     @app.get("/manifest.json")
     async def manifest() -> FileResponse:
