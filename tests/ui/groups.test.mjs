@@ -44,7 +44,7 @@ export default async function (t) {
   t.check("and offers only the lights nobody is using",
     labels("#tracks .segs.free .seg"), ["+ Light 2"]);
   t.check("a free light is visible outside the editor too",
-    labels("#spare .seg"), ["+ Light 2"]);
+    labels("#spare .seg"), ["Light 2"]);
 
   // ── Grouping ────────────────────────────────────────────────────────────
   p.run("addLight('t0','l2')");
@@ -82,21 +82,17 @@ export default async function (t) {
   t.check("taking the LAST light out deletes the track",
     p.run("show.tracks.map(x => x.id)"), ["t0"]);
   t.check("and its lights are free again",
-    labels("#spare .seg"), ["+ Light 1", "+ Light 2"]);
+    labels("#spare .seg"), ["Light 1", "Light 2"]);
 
   // ── Rule 3: build one from nothing, on a light YOU name ─────────────────
-  // "+ Track" used to grab the first free light and hope. Which light a track is
-  // for is not a decision the panel gets to make.
+  // Making a track used to grab the first free light and hope. Which light a
+  // track is FOR is not a decision the panel gets to make: you tap the light.
   p.run("addTrack()");
   await sleep(20);
-  t.check("+ Track with no light named creates nothing",
+  t.check("a track cannot be made without naming its light",
     p.run("show.tracks.length"), 1);
-
-  p.run("togglePicker()");
-  await sleep(20);
-  t.check("it asks which light instead", p.$("#picker").className, "show");
-  t.check("offering exactly the free ones",
-    labels("#picker .seg"), ["Light 1", "Light 2"]);
+  t.check("the free lights are the way in, and they say so",
+    /new track/.test(p.$("#spare .lab").textContent), true);
 
   p.run("addTrack('l1')");
   await sleep(80);
@@ -134,7 +130,7 @@ export default async function (t) {
   t.check("a link to it is cleared, not left dangling",
     p.run("show.tracks[0].link"), null);
   t.check("and its lights go back to the free pile",
-    labels("#spare .seg").includes("+ Light 0"), true);
+    labels("#spare .seg").includes("Light 0"), true);
 
   // ── A blank show, from nothing ──────────────────────────────────────────
   p.run("newShow()");

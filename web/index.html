@@ -215,8 +215,12 @@
   /* The lights IN a track read as chips you can pull out; the ones you can add
      read as an offer. Different jobs, so they must not look the same. */
   .segs.rig .seg.sel b { opacity:.55; margin-left:2px; }
+  /* Light names are long ("Kitchen Countertop Light"). Equal-width columns
+     squeezed them into four-line boxes. Let a chip be as wide as its name. */
+  .segs.rig .seg, .segs.free .seg { flex:0 0 auto; white-space:nowrap; }
   .segs.free .seg {
     background:transparent; border-style:dashed; color:var(--muted);
+    padding:6px 9px;
   }
   .segs.free .seg:hover { color:var(--accent); border-color:var(--accent); }
 
@@ -365,11 +369,8 @@
 
 <div id="tracks"></div>
 <div class="addrow">
-  <button id="addtrack" onclick="togglePicker()">＋ Track</button>
   <button class="ghost" onclick="newShow()">New show</button>
 </div>
-<!-- Which light the new track is for is YOUR call, not the panel's. -->
-<div id="picker"></div>
 
 <h2 class="fold" id="h-shows" onclick="fold('shows')">My shows
   <small style="text-transform:none;letter-spacing:0;opacity:.5">— tap to load</small></h2>

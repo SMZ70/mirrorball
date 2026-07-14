@@ -281,8 +281,9 @@ const GUIDE = `
        to Hue — so the app, the bot and the party routine can drive them again.</div>
   <div><span class="k">tracks</span> tap a light to open it. Everything you change
        applies <b>live</b>, while it plays.</div>
-  <div><span class="k">＋ Track</span> build one from a light that is not doing
-       anything yet. You do not have to start from a preset and take it apart.</div>
+  <div><span class="k">＋ new</span> the lights that are in no track are listed at
+       the top. Tap one and it becomes a track. You do not have to start from a
+       preset and take it apart.</div>
   <div><span class="k">✕</span> delete a track. Its lights go back to the
        unassigned strip, free for another one.</div>`;
 
@@ -468,12 +469,10 @@ function addTrack(lightId) {
     mute: false, solo: false, seed: show.tracks.length,
   });
   open = id;                                 // land in the editor, ready to shape it
-  picking = false;
   push();
   render();
 }
 
-let picking = false;
 let adv = false;        // the fine-tuning half of the open track's editor
 
 /** The editor was one long scroll: shape, rate, curve, colour, hue, phase, duty,
@@ -482,12 +481,6 @@ let adv = false;        // the fine-tuning half of the open track's editor
 function toggleAdv() {
   adv = !adv;
   drawn = "";
-  render();
-}
-
-/** Reveal the free lights, so you can say which one the new track is for. */
-function togglePicker() {
-  picking = !picking && unassigned().length > 0;
   render();
 }
 
@@ -816,7 +809,7 @@ function render() {
   // -- and never mid-drag, which would tear the slider out from under the
   // finger holding it.
   if (dragging) return;
-  const key = [showKey(), open, adv, picking, loaded?.name, edited(),
+  const key = [showKey(), open, adv, loaded?.name, edited(),
                (state.shows || []).join()].join("|");
   if (key === drawn) return;
   drawn = key;
@@ -833,25 +826,14 @@ function render() {
           no tracks yet — pick a preset above, or ＋ Track to build one
         </span></div></div>`;
 
-  // Lights in no track. Tap one and it becomes a track of its own: the shortest
-  // path from "this bulb is doing nothing" to "this bulb is doing something".
+  // Lights in no track. Tapping one BUILDS a track for it -- which is also the
+  // only way to make a track, on purpose. A "+ Track" button that then asked
+  // which light was two controls doing one job, and the second was the same list
+  // over again. One control, and it names what it will act on.
   const free = unassigned();
   $("spare").className = free.length ? "show" : "";
   $("spare").innerHTML = free.length
-    ? `<div class="lab">not in any track — tap to give it one</div>
-       <div class="segs">${free.map((l) => `<div class="seg"
-            onclick="addTrack('${l.id}')">+ ${l.name}</div>`).join("")}</div>`
-    : "";
-
-  $("addtrack").disabled = !free.length;
-  $("addtrack").className = picking && free.length ? "on" : "";
-  $("addtrack").textContent = !free.length
-    ? "＋ Track — every light is in one"
-    : picking ? "pick a light…" : "＋ Track";
-
-  $("picker").className = picking && free.length ? "show" : "";
-  $("picker").innerHTML = picking && free.length
-    ? `<div class="lab">which light is this track for?</div>
+    ? `<div class="lab">＋ new track — tap the light it is for</div>
        <div class="segs">${free.map((l) => `<div class="seg"
             onclick="addTrack('${l.id}')">${l.name}</div>`).join("")}</div>`
     : "";
