@@ -35,7 +35,7 @@ export default async function (t) {
 
   // The two controls that only exist in context must explain themselves there,
   // and nowhere else -- help for a control you cannot see is noise.
-  p.run("toggleLight('t0','l1')");                 // now a group: spread appears
+  p.run("addLight('t0','l1')");                    // now a group: spread appears
   await sleep(10);
   t.check("a group's spread is explained", p.$$("#tracks .help").length, ALWAYS.length + 1);
 
@@ -46,7 +46,7 @@ export default async function (t) {
   await sleep(10);
   const rows = p.$$("#tracks .row label").map((e) => e.textContent.trim());
   t.check("a follower is offered its relation, not a pattern", rows,
-          ["lights", "spread", "follows", "speed", "hue ±",
+          ["lights", "add", "spread", "follows", "speed", "hue ±",
            "phase", "duty", "min", "max", "level"]);
 
   p.run("toggleHelp()");

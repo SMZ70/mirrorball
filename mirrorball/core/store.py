@@ -24,6 +24,23 @@ def _safe_name(name: str) -> str:
     return ("".join(keep).strip() or "untitled")[:64]
 
 
+def _tidy(show: Show) -> Show:
+    """A show with nobody soloed, and no empty tracks.
+
+    An empty track renders nothing and is not a thing in the room. They
+    accumulated because taking the last light out of a track used to leave the
+    husk behind, and a list full of husks is unreadable. The panel cannot make
+    them any more; this heals the ones already saved.
+    """
+    clean = _unsolo(show)
+    keep = {t.id for t in clean.tracks if t.targets}
+    clean.tracks = [t for t in clean.tracks if t.id in keep]
+    for track in clean.tracks:
+        if track.link and track.link.follow not in keep:
+            track.link = None            # it followed a track that is now gone
+    return clean
+
+
 def _unsolo(show: Show) -> Show:
     """A show with nobody soloed.
 
@@ -49,7 +66,7 @@ def save(show: Show, directory: Path = SHOWS_DIR) -> Path:
     # Write, then rename: a crash mid-write leaves the old show intact rather
     # than a half-written file that will not load.
     tmp = path.with_suffix(".json.tmp")
-    tmp.write_text(_unsolo(show).model_dump_json(indent=2) + "\n")
+    tmp.write_text(_tidy(show).model_dump_json(indent=2) + "\n")
     tmp.replace(path)
 
     logger.info("saved show {!r}", show.name)
@@ -61,7 +78,7 @@ def load(name: str, directory: Path = SHOWS_DIR) -> Show:
     # Also unsolo on the way in: shows written before this was fixed still have
     # a solo latched in them, and they are the user's work -- heal them rather
     # than make them go hunting for the one track with an S on it.
-    return _unsolo(Show.model_validate_json(path.read_text()))
+    return _tidy(Show.model_validate_json(path.read_text()))
 
 
 def names(directory: Path = SHOWS_DIR) -> list[str]:

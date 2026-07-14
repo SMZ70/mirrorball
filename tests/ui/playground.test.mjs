@@ -111,10 +111,14 @@ export default async function (t) {
   p.run("toggleOpen('t0')");
   await sleep(30);
 
-  const chips = [...p.window.document.querySelectorAll(".track.open .segs.rig .seg")]
+  const own = [...p.window.document.querySelectorAll(".track.open .segs.rig .seg")]
     .map((e) => e.textContent.trim());
-  t.check("the editor offers the VIRTUAL lamps", chips, ["Lamp 1", "Lamp 2", "Lamp 3"]);
-  t.check("and not one real light", chips.some((c) => /Light \d/.test(c)), false);
+  const offer = [...p.window.document.querySelectorAll(".track.open .segs.free .seg")]
+    .map((e) => e.textContent.trim());
+  t.check("the track holds a VIRTUAL lamp", own, ["Lamp 1 ×"]);
+  t.check("and the ones on offer are lamps too", offer, ["+ Lamp 2", "+ Lamp 3"]);
+  t.check("not one real light is offered",
+    [...own, ...offer].some((c) => /Light \d/.test(c)), false);
 
   // ── The rig you are on is never in doubt ─────────────────────────────────
   p.feed(state({ pg: pg({ rig: "virtual", count: 12, savable: false }) }));

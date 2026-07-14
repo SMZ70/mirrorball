@@ -33,10 +33,11 @@ const BPM_MIN = 40, BPM_MAX = 220;      // the server rejects anything outside
 // hover, so there is nowhere to put a tooltip. Written to answer "why would I
 // touch this?", not to restate the label.
 const HELP = {
-  lights: "Which lights this track drives. Tap to add or remove — a light can "
-        + "only be in one track at a time, so adding it here takes it from "
-        + "wherever it was. <b>Two or more lights in one track is a group</b>: "
-        + "they share a pattern.",
+  lights: "The lights this track drives. Tap one to <b>take it out</b>; take the "
+        + "last one out and the track goes with it, because an empty track is not "
+        + "a thing in the room. <b>add</b> offers the lights that are in no track "
+        + "yet. <b>Two or more lights in one track is a group</b>: they share a "
+        + "pattern, and <b>spread</b> decides what that means.",
   spread: "How the pattern is dealt across the lights in this group. "
         + "<b>unison</b> and they all do the same thing at the same moment — the "
         + "group becomes one big lamp. Turn it up and each light sits a little "
@@ -238,6 +239,22 @@ function tap() {
   sendW({ type: "tap" });
 }
 
+/** Fold a section away. Remembered: a preference you have to re-state on every
+ *  visit is not a preference, it is a chore. */
+function fold(which) {
+  const key = `mirrorball.shut.${which}`;
+  const shut = localStorage.getItem(key) === "1";
+  localStorage.setItem(key, shut ? "0" : "1");
+  applyFolds();
+}
+
+function applyFolds() {
+  for (const which of ["presets", "shows"]) {
+    const shut = localStorage.getItem(`mirrorball.shut.${which}`) === "1";
+    $(`h-${which}`).className = shut ? "fold shut" : "fold";
+  }
+}
+
 function toggleHelp() {
   helpOn = !helpOn;
   localStorage.setItem("mirrorball.help", helpOn ? "1" : "0");
@@ -263,7 +280,11 @@ const GUIDE = `
   <div><span class="k">▶ ■</span> ■ <b>stops</b> the show and hands the lights back
        to Hue — so the app, the bot and the party routine can drive them again.</div>
   <div><span class="k">tracks</span> tap a light to open it. Everything you change
-       applies <b>live</b>, while it plays.</div>`;
+       applies <b>live</b>, while it plays.</div>
+  <div><span class="k">＋ Track</span> build one from a light that is not doing
+       anything yet. You do not have to start from a preset and take it apart.</div>
+  <div><span class="k">✕</span> delete a track. Its lights go back to the
+       unassigned strip, free for another one.</div>`;
 
 function toggleBlackout() {
   show.blackout = !show.blackout;      // ours to change; the server follows
@@ -392,21 +413,105 @@ function setRig(rig, count) {
   send({ type: "pg.rig", rig, count: count ?? state?.pg?.count ?? 8 });
 }
 
-// ── Groups ────────────────────────────────────────────────────────────────
+// ── Tracks and the lights in them ─────────────────────────────────────────
+//
+// A track is a set of lights sharing one pattern. Three rules, and they are what
+// keep the editor honest:
+//
+//   1. A light belongs to exactly ONE track. Two tracks driving one bulb would
+//      fight, and whichever rendered last would win -- a coin toss dressed up as
+//      a feature.
+//   2. An EMPTY track cannot exist. It renders nothing, it is not a thing in the
+//      room, and leaving them lying around is what made this list unreadable.
+//      Take the last light out of a track and the track goes with it.
+//   3. A light in no track is UNASSIGNED, and says so. It is not hidden inside
+//      the editor of a track it has nothing to do with.
 
-/** Move a light in or out of a track. A light belongs to exactly one track --
- *  two tracks driving the same bulb would just fight, and the last one rendered
- *  would win, which is a coin toss dressed up as a feature. */
-function toggleLight(trackId, lightId) {
-  const t = track(trackId);
-  if (t.targets.includes(lightId)) {
-    t.targets = t.targets.filter((x) => x !== lightId);
-  } else {
-    for (const other of show.tracks) {
-      other.targets = other.targets.filter((x) => x !== lightId);
-    }
-    t.targets = [...t.targets, lightId];
+/** Lights that are in no track. The raw material for a new one. */
+const unassigned = () => {
+  const taken = new Set(show.tracks.flatMap((t) => t.targets));
+  return rigLights().filter((l) => !taken.has(l.id));
+};
+
+const lightName = (id) => (rigLights().find((l) => l.id === id) || {}).name || id;
+
+/** Drop empty tracks, and any link that pointed at one. Rule 2, in one place --
+ *  every edit funnels through here rather than each remembering to tidy up. */
+function prune() {
+  const gone = new Set(show.tracks.filter((t) => !t.targets.length).map((t) => t.id));
+  if (!gone.size) return;
+  show.tracks = show.tracks.filter((t) => !gone.has(t.id));
+  for (const t of show.tracks) {
+    if (t.link && gone.has(t.link.follow)) t.link = null;
   }
+  if (gone.has(open)) open = null;
+}
+
+const nextId = () => {
+  const used = new Set(show.tracks.map((t) => t.id));
+  for (let i = 0; ; i++) if (!used.has(`t${i}`)) return `t${i}`;
+};
+
+/** A new track, on a light nobody is using. Starting a show no longer means
+ *  loading a preset and dismantling it. */
+function addTrack(lightId) {
+  const light = lightId || unassigned()[0]?.id;
+  if (!light) return;                       // nothing free: there is nothing to make
+  const hue = Math.round(Math.random() * 360);
+  const id = nextId();
+  show.tracks.push({
+    id, targets: [light], name: lightName(light),
+    shape: "pulse", curve: "sine", rate: 1, phase: 0, duty: 0.5, spread: 0,
+    palette: { hue_from: hue, hue_to: (hue + 40) % 360, saturation: 1, mode: "hold" },
+    bri_min: 0, bri_max: 100, level: 1, link: null, invert: false,
+    mute: false, solo: false, seed: show.tracks.length,
+  });
+  open = id;                                 // land in the editor, ready to shape it
+  push();
+  render();
+}
+
+function deleteTrack(id) {
+  show.tracks = show.tracks.filter((t) => t.id !== id);
+  for (const t of show.tracks) {
+    if (t.link?.follow === id) t.link = null;
+  }
+  if (open === id) open = null;
+  push();
+  render();
+}
+
+/** Take a light out. The last one out takes the track with it (rule 2). */
+function dropLight(trackId, lightId) {
+  const t = track(trackId);
+  t.targets = t.targets.filter((x) => x !== lightId);
+  prune();
+  push();
+  render();
+}
+
+/** Put an unassigned light into a track. */
+function addLight(trackId, lightId) {
+  const t = track(trackId);
+  if (t.targets.includes(lightId)) return;
+  for (const other of show.tracks) {          // rule 1: one light, one track
+    other.targets = other.targets.filter((x) => x !== lightId);
+  }
+  t.targets = [...t.targets, lightId];
+  prune();                                    // stealing may have emptied another
+  push();
+  render();
+}
+
+/** Start over: every light unassigned, no tracks, nothing to dismantle first. */
+function newShow() {
+  show = {
+    version: 2, name: "untitled", bpm: show.bpm,
+    master: { brightness: 1, energy: 1 }, blackout: false, tracks: [],
+  };
+  open = null;
+  loaded = null;
+  drawn = "";
   push();
   render();
 }
@@ -474,21 +579,24 @@ function trackHtml(t) {
   const leader = t.link && show.tracks.find((x) => x.id === t.link.follow);
 
   const head = `
-    <div class="thead" onclick="toggleOpen('${t.id}')">
-      <span class="swatch" style="background:${swatch}"></span>
-      <span class="tname">${trackLabel(t)}</span>
-      <span class="tinfo">${leader
+    <div class="thead">
+      <span class="swatch" style="background:${swatch}" onclick="toggleOpen('${t.id}')"></span>
+      <span class="tname" onclick="toggleOpen('${t.id}')">${trackLabel(t)}</span>
+      <span class="tinfo" onclick="toggleOpen('${t.id}')">${leader
         ? `follows ${trackLabel(leader)}`
         : `${t.shape} · ${rateLabel(t.rate)}`}</span>
       ${t.targets.length > 1 ? `<span class="chip g">${t.targets.length}</span>` : ""}
       ${leader ? '<span class="chip l">↳</span>' : ""}
       ${t.solo ? '<span class="chip s">S</span>' : ""}
       ${t.mute ? '<span class="chip m">M</span>' : ""}
+      <span class="del" title="delete this track"
+            onclick="deleteTrack('${t.id}')">✕</span>
     </div>`;
 
   if (!isOpen) return `<div class="track ${t.mute ? "muted" : ""}">${head}</div>`;
 
   const others = show.tracks.filter((x) => x.id !== t.id);
+  const free = unassigned();
 
   return `
   <div class="track ${t.mute ? "muted" : ""} open">
@@ -496,10 +604,19 @@ function trackHtml(t) {
     <div class="body">
 
       <div class="row"><label>lights</label><div class="segs rig">
-        ${rigLights().map((l) => `<div
-           class="seg ${t.targets.includes(l.id) ? "sel" : ""}"
-           onclick="toggleLight('${t.id}','${l.id}')">${l.name}</div>`).join("")}
+        ${t.targets.map((id) => `<div class="seg sel"
+           onclick="dropLight('${t.id}','${id}')">${lightName(id)} <b>×</b></div>`).join("")}
       </div></div>
+
+      ${free.length ? `
+      <div class="row"><label>add</label><div class="segs free">
+        ${free.map((l) => `<div class="seg"
+           onclick="addLight('${t.id}','${l.id}')">+ ${l.name}</div>`).join("")}
+      </div></div>` : `
+      <div class="row"><label>add</label>
+        <span class="hint">every light is already in a track — take one out of
+        another track first</span>
+      </div>`}
       ${help("lights")}
 
       ${t.targets.length > 1 ? `
@@ -684,7 +801,25 @@ function render() {
     || `<span class="hint">nothing saved yet — load a preset, change it, name it, Save</span>`;
 
   $("tracks").innerHTML = show.tracks.map(trackHtml).join("")
-    || `<div class="track"><div class="thead"><span class="tinfo">no tracks</span></div></div>`;
+    || `<div class="track"><div class="thead"><span class="tinfo">
+          no tracks yet — pick a preset above, or ＋ Track to build one
+        </span></div></div>`;
+
+  // Lights in no track. Tap one and it becomes a track of its own: the shortest
+  // path from "this bulb is doing nothing" to "this bulb is doing something".
+  const free = unassigned();
+  $("spare").className = free.length ? "show" : "";
+  $("spare").innerHTML = free.length
+    ? `<div class="lab">not in any track — tap to give it one</div>
+       <div class="segs">${free.map((l) => `<div class="seg"
+            onclick="addTrack('${l.id}')">+ ${l.name}</div>`).join("")}</div>`
+    : "";
+
+  $("addtrack").disabled = !free.length;
+  $("addtrack").textContent = free.length
+    ? `＋ Track (${free.length} light${free.length > 1 ? "s" : ""} free)`
+    : "＋ Track — every light is in one";
 }
 
+applyFolds();
 connect();

@@ -89,8 +89,21 @@ node playground.mjs    # the playground: still + gif
   rather than restarting. It is the "kill the room for a second" button, not ■.
 - **?** — inline help: every control explains itself, in place
 - tap any light to set its **shape, rate, colour range, phase** — live, while it plays
-- **Presets** — tap a card to load it
-- **My shows** — tap a saved show to load it; **Save** names the current one
+- **＋ Track** — build one from a light that is doing nothing. You do not have to
+  load a preset and take it apart to start.
+- **✕** — delete a track; its lights go back to the unassigned strip
+- **Presets** / **My shows** — tap a card to load; fold the sections away when you
+  are working in the tracks
+
+Three rules keep the track list honest, and they are worth stating because each
+one was a mess before it was a rule:
+
+1. **A light belongs to exactly one track.** Two tracks driving one bulb just
+   fight, and whichever rendered last wins — a coin toss dressed up as a feature.
+2. **An empty track cannot exist.** It renders nothing and is not a thing in the
+   room. Take the last light out and the track goes with it.
+3. **A light in no track is unassigned, and says so** — in the open, not hidden as
+   an unselected chip inside the editor of a track it has nothing to do with.
 
 ## The playground
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 
 from mirrorball.core import store
-from mirrorball.core.show import Show, Track
+from mirrorball.core.show import Link, Show, Track
 
 
 def test_solo_is_never_saved_or_loaded(tmp_path):
@@ -46,3 +46,31 @@ def test_a_show_saved_with_a_latched_solo_is_healed_on_load(tmp_path):
     show = store.load("old", tmp_path)
     assert [t.solo for t in show.tracks] == [False, False]
     assert len(show.active_tracks()) == 2         # the group plays again
+
+
+def test_empty_tracks_do_not_survive_a_round_trip(tmp_path):
+    """An empty track renders nothing and is not a thing in the room. They piled
+    up because taking the last light out of a track left the husk behind."""
+    show = Show(name="x", tracks=[
+        Track(id="t0", targets=["l0", "l1"]),
+        Track(id="t1", targets=[]),                      # a husk
+        Track(id="t2", targets=["l2"], link=Link(follow="t1")),   # following one
+    ])
+    store.save(show, tmp_path)
+    back = store.load("x", tmp_path)
+
+    assert [t.id for t in back.tracks] == ["t0", "t2"]
+    assert back.tracks[1].link is None, "a link to a track that is gone must go too"
+
+
+def test_a_show_saved_with_husks_is_healed_on_load(tmp_path):
+    (tmp_path / "old.json").write_text(json.dumps({
+        "name": "old",
+        "tracks": [
+            {"id": "t0", "targets": ["l0"]},
+            {"id": "t1", "targets": []},
+            {"id": "t2", "targets": []},
+        ],
+    }))
+    show = store.load("old", tmp_path)
+    assert [t.id for t in show.tracks] == ["t0"]

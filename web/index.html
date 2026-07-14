@@ -194,6 +194,45 @@
   .preset.edited .pnote { color:var(--warn); opacity:.8; }
   #shows button.on { border-color:var(--accent); color:var(--accent); }
 
+  /* ── Tracks: building one, and taking it apart ───────────────────────────── */
+  .thead .del {
+    font-size:13px; color:var(--muted); padding:2px 6px; border-radius:6px;
+    cursor:pointer; flex:none;
+  }
+  .thead .del:hover { color:var(--hot); background:#2a1016; }
+
+  /* The lights IN a track read as chips you can pull out; the ones you can add
+     read as an offer. Different jobs, so they must not look the same. */
+  .segs.rig .seg.sel b { opacity:.55; margin-left:2px; }
+  .segs.free .seg {
+    background:transparent; border-style:dashed; color:var(--muted);
+  }
+  .segs.free .seg:hover { color:var(--accent); border-color:var(--accent); }
+
+  #spare {
+    display:none; margin-bottom:10px; padding:9px 11px; border-radius:12px;
+    background:var(--panel); border:1px dashed var(--line);
+  }
+  #spare.show { display:block; }
+  #spare .lab { font-size:11px; color:var(--muted); margin-bottom:6px; }
+  #spare .segs .seg { flex:0 0 auto; }
+
+  /* Nine preset cards pushed the tracks off the screen. A section you are not
+     using should not cost you the whole viewport, so they fold -- and it is
+     remembered, because a preference re-asked every visit is not a preference. */
+  h2.fold { cursor:pointer; user-select:none; }
+  h2.fold::before {
+    content:"▾"; display:inline-block; margin-right:6px; font-size:9px;
+    transition:transform .12s; transform:rotate(0deg);
+  }
+  h2.fold.shut::before { transform:rotate(-90deg); }
+  h2.fold.shut + .grid,
+  h2.fold.shut + .grid + .row { display:none; }
+
+  .addrow { display:flex; gap:7px; margin-top:9px; }
+  #addtrack { flex:1; border-style:dashed; color:var(--accent); background:transparent; }
+  #addtrack:disabled { color:var(--muted); border-color:var(--line); cursor:default; }
+
   /* ── Playground ──────────────────────────────────────────────────────────
      Everything here is additive and hidden unless the playground is open, so
      the live panel looks and behaves exactly as it did. */
@@ -286,13 +325,23 @@
 <div id="err"></div>
 <div id="guide"></div>
 
-<h2>Presets</h2>
+<h2 class="fold" id="h-presets" onclick="fold('presets')">Presets</h2>
 <div class="grid" id="presets"></div>
 
 <h2>Tracks <span id="area" style="text-transform:none;letter-spacing:0"></span></h2>
-<div id="tracks"></div>
 
-<h2>My shows <small style="text-transform:none;letter-spacing:0;opacity:.5">— tap to load</small></h2>
+<!-- Lights in no track. They used to be invisible -- buried as unselected chips
+     inside the editor of a track they had nothing to do with. -->
+<div id="spare"></div>
+
+<div id="tracks"></div>
+<div class="addrow">
+  <button id="addtrack" onclick="addTrack()">＋ Track</button>
+  <button class="ghost" onclick="newShow()">New show</button>
+</div>
+
+<h2 class="fold" id="h-shows" onclick="fold('shows')">My shows
+  <small style="text-transform:none;letter-spacing:0;opacity:.5">— tap to load</small></h2>
 <div class="grid" id="shows"></div>
 <div class="row" style="margin-top:7px">
   <input type="text" id="name" placeholder="name it…" />
