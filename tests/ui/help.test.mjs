@@ -18,6 +18,7 @@ export default async function (t) {
   p.feed(state());
   await sleep(10);
   p.run("toggleOpen('t0')");
+  p.run("toggleAdv()");            // the fine tuning half, so every row is on screen
 
   t.check("off by default", p.$$(".help").length, 0);
   t.check("no guide either", p.$("#guide").className, "");

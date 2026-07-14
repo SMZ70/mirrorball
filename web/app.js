@@ -452,11 +452,12 @@ const nextId = () => {
   for (let i = 0; ; i++) if (!used.has(`t${i}`)) return `t${i}`;
 };
 
-/** A new track, on a light nobody is using. Starting a show no longer means
- *  loading a preset and dismantling it. */
+/** A new track, on a light YOU name. It used to grab the first free light and
+ *  hope, which is a decision the panel has no business making -- if the track is
+ *  going to be "the Sofa lamp", you should be the one saying so. */
 function addTrack(lightId) {
-  const light = lightId || unassigned()[0]?.id;
-  if (!light) return;                       // nothing free: there is nothing to make
+  const light = lightId;
+  if (!light) return;
   const hue = Math.round(Math.random() * 360);
   const id = nextId();
   show.tracks.push({
@@ -467,7 +468,26 @@ function addTrack(lightId) {
     mute: false, solo: false, seed: show.tracks.length,
   });
   open = id;                                 // land in the editor, ready to shape it
+  picking = false;
   push();
+  render();
+}
+
+let picking = false;
+let adv = false;        // the fine-tuning half of the open track's editor
+
+/** The editor was one long scroll: shape, rate, curve, colour, hue, phase, duty,
+ *  min, max, level, solo, mute -- all at once, all equal. Most of the time you
+ *  want the first few. The rest are for when you already know what you want. */
+function toggleAdv() {
+  adv = !adv;
+  drawn = "";
+  render();
+}
+
+/** Reveal the free lights, so you can say which one the new track is for. */
+function togglePicker() {
+  picking = !picking && unassigned().length > 0;
   render();
 }
 
@@ -529,6 +549,7 @@ function setLink(id, patch) {
 }
 
 function toggleOpen(id) {
+  if (id !== open) adv = false;
   open = open === id ? null : id;
   render();
 }
@@ -682,6 +703,12 @@ function trackHtml(t) {
       ${help("hue")}
       `}
 
+      <div class="more ${adv ? "on" : ""}" onclick="toggleAdv()">
+        ${adv ? "− fewer" : "＋ fine tuning"}
+        <small>phase · duty · brightness · fader</small>
+      </div>
+
+      ${adv ? `
       <div class="row"><label>phase</label>
         ${slider(t, "phase", 'min="0" max="0.99" step="0.01"')}
       </div>
@@ -703,7 +730,7 @@ function trackHtml(t) {
       <div class="row"><label>level</label>
         ${slider(t, "level", 'min="0" max="1" step="0.01"')}
       </div>
-      ${help("level")}
+      ${help("level")}` : ""}
 
       <div class="row">
         <button class="${t.solo ? "on" : ""}" onclick="setTrack('${t.id}',{solo:${!t.solo}})">SOLO</button>
@@ -789,7 +816,8 @@ function render() {
   // -- and never mid-drag, which would tear the slider out from under the
   // finger holding it.
   if (dragging) return;
-  const key = [showKey(), open, loaded?.name, edited(), (state.shows || []).join()].join("|");
+  const key = [showKey(), open, adv, picking, loaded?.name, edited(),
+               (state.shows || []).join()].join("|");
   if (key === drawn) return;
   drawn = key;
 
@@ -816,9 +844,17 @@ function render() {
     : "";
 
   $("addtrack").disabled = !free.length;
-  $("addtrack").textContent = free.length
-    ? `＋ Track (${free.length} light${free.length > 1 ? "s" : ""} free)`
-    : "＋ Track — every light is in one";
+  $("addtrack").className = picking && free.length ? "on" : "";
+  $("addtrack").textContent = !free.length
+    ? "＋ Track — every light is in one"
+    : picking ? "pick a light…" : "＋ Track";
+
+  $("picker").className = picking && free.length ? "show" : "";
+  $("picker").innerHTML = picking && free.length
+    ? `<div class="lab">which light is this track for?</div>
+       <div class="segs">${free.map((l) => `<div class="seg"
+            onclick="addTrack('${l.id}')">${l.name}</div>`).join("")}</div>`
+    : "";
 }
 
 applyFolds();

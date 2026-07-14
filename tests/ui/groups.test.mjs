@@ -84,7 +84,20 @@ export default async function (t) {
   t.check("and its lights are free again",
     labels("#spare .seg"), ["+ Light 1", "+ Light 2"]);
 
-  // ── Rule 3: build one from nothing ──────────────────────────────────────
+  // ── Rule 3: build one from nothing, on a light YOU name ─────────────────
+  // "+ Track" used to grab the first free light and hope. Which light a track is
+  // for is not a decision the panel gets to make.
+  p.run("addTrack()");
+  await sleep(20);
+  t.check("+ Track with no light named creates nothing",
+    p.run("show.tracks.length"), 1);
+
+  p.run("togglePicker()");
+  await sleep(20);
+  t.check("it asks which light instead", p.$("#picker").className, "show");
+  t.check("offering exactly the free ones",
+    labels("#picker .seg"), ["Light 1", "Light 2"]);
+
   p.run("addTrack('l1')");
   await sleep(80);
   t.check("a track can be built from a free light, no preset needed",

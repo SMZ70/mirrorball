@@ -22,6 +22,7 @@ export default async function (t) {
   p.feed(state());
   await sleep(10);
   p.run("toggleOpen('t0')");
+  p.run("toggleAdv()");            // phase lives under "fine tuning" now
 
   const slider = p.$$('#tracks input[type=range]')
     .find((i) => i.getAttribute("oninput").includes("phase"));

@@ -69,6 +69,17 @@
     margin:22px 0 8px; font-weight:600;
   }
 
+  /* On a phone the transport wrapped onto two rows, so BLACK and ▶ -- the two
+     buttons you actually reach for in the dark -- ended up on a line of their
+     own, below the fold of a sticky bar. Shrink to fit rather than wrap. */
+  @media (max-width: 480px) {
+    .transport { gap:6px; padding:10px; flex-wrap:nowrap; }
+    .transport button { padding:8px 10px; font-size:13px; }
+    .tempo input { width:48px; font-size:21px; }
+    .tempo small { display:none; }         /* the field is obviously the tempo */
+    .nudge { width:26px; height:26px; }
+  }
+
   /* ── Tracks ─────────────────────────────────────────────────────────── */
   .track {
     background:var(--panel); border:1px solid var(--line); border-radius:var(--r);
@@ -229,7 +240,25 @@
   h2.fold.shut + .grid,
   h2.fold.shut + .grid + .row { display:none; }
 
+  /* The editor was one long scroll with everything at equal weight. The things
+     you reach for first stay up top; the fine tuning waits until you ask. */
+  .more {
+    display:flex; align-items:center; gap:8px; margin:12px 0 4px; padding:8px 10px;
+    border:1px dashed var(--line); border-radius:9px;
+    font-size:11px; font-weight:600; color:var(--muted); cursor:pointer;
+  }
+  .more:hover { color:var(--text); }
+  .more.on { color:var(--accent); border-color:var(--accent); }
+  .more small { font-weight:400; opacity:.6; }
+
   .addrow { display:flex; gap:7px; margin-top:9px; }
+  #picker {
+    display:none; margin-top:8px; padding:10px 11px; border-radius:12px;
+    background:var(--panel); border:1px solid var(--accent);
+  }
+  #picker.show { display:block; }
+  #picker .lab { font-size:11px; color:var(--accent); margin-bottom:7px; }
+  #picker .segs .seg { flex:0 0 auto; }
   #addtrack { flex:1; border-style:dashed; color:var(--accent); background:transparent; }
   #addtrack:disabled { color:var(--muted); border-color:var(--line); cursor:default; }
 
@@ -336,9 +365,11 @@
 
 <div id="tracks"></div>
 <div class="addrow">
-  <button id="addtrack" onclick="addTrack()">＋ Track</button>
+  <button id="addtrack" onclick="togglePicker()">＋ Track</button>
   <button class="ghost" onclick="newShow()">New show</button>
 </div>
+<!-- Which light the new track is for is YOUR call, not the panel's. -->
+<div id="picker"></div>
 
 <h2 class="fold" id="h-shows" onclick="fold('shows')">My shows
   <small style="text-transform:none;letter-spacing:0;opacity:.5">— tap to load</small></h2>
