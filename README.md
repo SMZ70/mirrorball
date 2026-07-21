@@ -1,4 +1,8 @@
-# mirrorball
+<p align="center">
+  <img src="docs/logo.svg" width="120" alt="mirrorball logo">
+</p>
+
+<h1 align="center">mirrorball</h1>
 
 A light sequencer for Philips Hue. Each light gets a *pattern* — a shape, a rate
 in beats, a colour range — and the engine renders them all as a pure function of
